@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Saung Haji Amir (SAHA) - Rumah makan khas Sunda autentik di Cisauk, Legok, Tangerang. Sajian Gurame Pesmol, Aneka Olahan Ayam, Seafood, Tumisan, dan Sambal Dadak dimasak dadakan.">
+  <title>Saung Haji Amir - Kelezatan Autentik Khas Sunda</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Aksesibilitas: Tautan Langsung ke Konten Utama -->
+  <a href="#main-content" class="skip-link">Lewati ke konten utama</a>
+
+  <!-- Banner Status Interaktif (Aria-live untuk Pembaca Layar) -->
+  <div id="status-banner" class="status-banner" role="status" aria-live="polite"></div>
+
+  <!-- Header & Navigasi Utama -->
+  <header class="site-header">
+    <div class="top-bar">
+      <div class="container top-bar-inner">
+        <span class="top-bar-item">🕒 Jam Operasional: Setiap Hari (10.00 - 17.00 WIB)</span>
+        <span class="top-bar-item">📞 Kontak / WA: 0812-1956-9995 / 0858-1055-9575</span>
+        <span class="top-bar-item">📍 Cileutik, Jl. Raya Cisauk, Legok, Tangerang</span>
+      </div>
+    </div>
+
+    <div class="container">
+      <nav class="navbar" aria-label="Navigasi Utama">
+        <a href="#beranda" class="brand-wrapper">
+          <img src="assets/images/logokecil.jpeg" alt="Logo Saung Haji Amir" class="brand-logo" width="50" height="50">
+          <div class="brand-info">
+            <span class="brand-title">Saung Haji Amir</span>
+            <span class="brand-tagline">Khas Sunda • Dimasak Dadakan</span>
+          </div>
+        </a>
+
+        <ul class="nav-links">
+          <li><a href="#beranda" class="nav-link">Beranda</a></li>
+          <li><a href="#buku-menu" class="nav-link">Buku Menu Asli</a></li>
+          <li><a href="#katalog" class="nav-link">Katalog Pesanan</a></li>
+          <li><a href="#ulasan" class="nav-link">Ulasan Tamu</a></li>
+          <li><a href="#pesan" class="nav-link nav-link-cta">📝 Reservasi & Order</a></li>
+          <li><a href="#kontak" class="nav-link">Kontak</a></li>
+        </ul>
+
+        <a href="#pesan" class="cart-pill-btn" aria-label="Lihat Keranjang Pesanan">
+          <span aria-hidden="true">🛒</span>
+          <span>Pesanan</span>
+          <span id="cart-jump-count" class="cart-badge">0</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Konten Utama Semantik -->
+  <main id="main-content">
+
+    <!-- 1. Bagian Beranda / Hero Section -->
+    <section id="beranda" class="hero" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-content">
+          <span class="hero-badge">🍃 Masakan Khas Sunda Autentik Cisauk</span>
+          <h1 id="hero-title" class="hero-title">Kelezatan Autentik Khas Sunda, Dimasak Dadakan untuk Anda</h1>
+          <p class="hero-desc">
+            Nikmati aneka hidangan legendaris khas Parahyangan di Saung Haji Amir. 
+            Dari Ikan Gurame Pesmol bumbu kuning, Ayam Bakar SAHA, Sop Iga Sapi berkaldu hangat, aneka olahan cumi dan udang, 
+            hingga sambal dadak pedas nampol — seluruhnya dimasak dadakan langsung dari wajan panas demi kesegaran rasa terbaik.
+          </p>
+
+          <div class="hero-highlights">
+            <div class="hero-highlight-item">
+              <span class="hero-highlight-icon" aria-hidden="true">&#10003;</span>
+              <span>Dimasak dadakan saat dipesan (Fresh from the pan)</span>
+            </div>
+            <div class="hero-highlight-item">
+              <span class="hero-highlight-icon" aria-hidden="true">&#10003;</span>
+              <span>Tersedia saung lesehan asri, parkir luas, & mushola nyaman</span>
+            </div>
+            <div class="hero-highlight-item">
+              <span class="hero-highlight-icon" aria-hidden="true">&#10003;</span>
+              <span>Pilihan reservasi saung (dine-in) maupun pesanan bungkus (take-away)</span>
+            </div>
+          </div>
+
+          <div class="hero-actions">
+            <a href="#katalog" class="btn btn-primary btn-lg">🍽️ Pilih Menu & Pesan</a>
+            <a href="#buku-menu" class="btn btn-secondary btn-lg">📖 Lihat Lembar Menu Asli</a>
+          </div>
+        </div>
+
+        <div class="hero-card">
+          <img src="assets/images/guramepesmol.jpeg" alt="Hidangan Andalan Ikan Gurame Pesmol Bumbu Kuning Rempah" class="hero-image" width="480" height="360">
+          <div class="hero-card-badge">
+            <strong>Menu Best Seller: Ikan Gurame Pesmol</strong>
+            <span>Bumbu kuning kaya rempah alami, dimasak dadakan untuk santap bersama</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. PROMOSI SPESIAL: FREE ASINAN & KOLAK SETIAP WEEKEND -->
+    <section class="section" style="padding-bottom: 0;">
+      <div class="container">
+        <article class="weekend-promo-banner">
+          <div class="weekend-promo-content">
+            <span class="weekend-promo-badge">🎉 PROMO SPESIAL AKHIR PEKAN (SABTU & MINGGU)</span>
+            <h2 class="weekend-promo-title">FREE REFILL ASINAN & KOLAK!</h2>
+            <p class="weekend-promo-desc">
+              Nikmati segarnya Asinan buah sayur tradisional dan manis gurihnya Kolak pisang ubi secara 
+              <strong>GRATIS SEPUASNYA</strong> setiap akhir pekan! Khusus bagi pengunjung yang santap di tempat (dine-in) di saung kami.
+            </p>
+            <div class="weekend-promo-perks">
+              <div class="perk-item">
+                <span aria-hidden="true">🥣</span>
+                <span><strong>Free Refill Sepuasnya</strong> — Boleh tambah sesuka hati selama persediaan ada!</span>
+              </div>
+              <div class="perk-item">
+                <span aria-hidden="true">🏡</span>
+                <span><strong>Khusus Santap di Tempat (Dine-in)</strong> — Dinikmati santai di saung lesehan kami (tidak untuk dibawa pulang).</span>
+              </div>
+              <div class="perk-item">
+                <span aria-hidden="true">📅</span>
+                <span><strong>Berlaku Rutin Setiap Hari Sabtu & Minggu</strong>.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="weekend-promo-media">
+            <div class="promo-dish-card">
+              <span class="free-pill">100% GRATIS</span>
+              <img src="assets/images/asinanfree.jpeg" alt="Asinan Segar Gratis Akhir Pekan Saung H. Amir" class="promo-dish-img">
+              <div class="promo-dish-label">Asinan Sayur & Buah Segar</div>
+            </div>
+            <div class="promo-dish-card">
+              <span class="free-pill">100% GRATIS</span>
+              <img src="assets/images/kolakfree.jpeg" alt="Kolak Pisang Ubi Manis Gurih Gratis Akhir Pekan" class="promo-dish-img">
+              <div class="promo-dish-label">Kolak Pisang Ubi Gurih</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 3. TAMPILAN UTAMA: LEMBAR MENU ASLI RESTORAN (katalog.jpeg Showcase Centerpiece) -->
+    <section id="buku-menu" class="section">
+      <div class="container">
+        <article class="menu-sheet-showcase">
+          <header class="menu-sheet-header">
+            <span class="menu-sheet-tag">Dokumen Resmi Restoran</span>
+            <h2 class="menu-sheet-title">Lembar Menu Asli Meja Restoran</h2>
+            <p class="menu-sheet-desc">
+              Berikut adalah lembar daftar menu fisik asli yang diberikan kepada para tamu saat berkunjung dan bersantap di saung Saung Haji Amir. 
+              Semua menu yang tertera di lembar ini dapat Anda pesan langsung di bawah!
+            </p>
+          </header>
+
+          <div class="menu-sheets-grid">
+            <div class="menu-sheet-card">
+              <img src="assets/images/katalogmenupenting.jpeg" alt="Lembar Daftar Menu Makanan Asli Saung Haji Amir" class="menu-sheet-img" onclick="window.open(this.src, '_blank')">
+              <div class="menu-sheet-footer">
+                <strong>📄 Lembar Menu Makanan Lengkap</strong>
+                <a href="assets/images/katalogmenupenting.jpeg" target="_blank" rel="noopener noreferrer">🔍 Klik Perbesar Ukuran Penuh</a>
+              </div>
+            </div>
+
+            <div class="menu-sheet-card">
+              <img src="assets/images/katalogmenuminuman.jpeg" alt="Lembar Daftar Menu Minuman Asli Saung Haji Amir" class="menu-sheet-img" onclick="window.open(this.src, '_blank')">
+              <div class="menu-sheet-footer">
+                <strong>🍹 Lembar Menu Minuman & Jus</strong>
+                <a href="assets/images/katalogmenuminuman.jpeg" target="_blank" rel="noopener noreferrer">🔍 Klik Perbesar Ukuran Penuh</a>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 4. KATALOG PESANAN DIGITAL (INTERAKTIF & MULTI-TAB) -->
+    <section id="katalog" class="section section-alt" aria-labelledby="catalog-title">
+      <div class="container">
+        <header class="section-header">
+          <span class="section-tag">Pemesanan Digital</span>
+          <h2 id="catalog-title" class="section-title">Katalog Menu & Paket Pesanan</h2>
+          <p class="section-subtitle">
+            Pilih kategori tab di bawah untuk melihat hidangan makanan, paket hemat rombongan, aneka minuman segar, atau katalog khusus sambal dadak.
+          </p>
+        </header>
+
+        <!-- Tab Pemilih Menu Utama (dirender dinamis via app.js) -->
+        <div id="catalog-tabs" class="catalog-tabs" role="tablist" aria-label="Kategori Utama Katalog"></div>
+
+        <!-- Toolbar Pencarian & Filter Subkategori -->
+        <div class="catalog-toolbar">
+          <div class="search-bar-row">
+            <label for="search-input" class="sr-only">Cari menu makanan atau minuman</label>
+            <input type="search" id="search-input" class="search-input" placeholder="🔍 Cari menu (contoh: Gurame, Iga, Kangkung, Es Jeruk, Sambel Goang)...">
+            <button type="button" id="reset-filter-btn" class="btn btn-outline">Reset Filter</button>
+          </div>
+
+          <!-- Kategori Filter Chips (dirender dinamis via app.js) -->
+          <div id="category-filters" class="category-filters" role="group" aria-label="Filter Subkategori Menu"></div>
+        </div>
+
+        <!-- Indikator Jumlah Menu -->
+        <p id="catalog-count" class="catalog-count" aria-live="polite">Memuat katalog menu...</p>
+
+        <!-- Grid Katalog Produk (dirender dinamis via app.js) -->
+        <div id="catalog-grid" class="catalog-grid" aria-live="polite"></div>
+
+        <!-- Tampilan Kosong Saat Menu Tidak Ditemukan -->
+        <div id="empty-catalog" class="empty-state" hidden>
+          <div class="empty-state-icon" aria-hidden="true">🔍</div>
+          <h3>Menu Tidak Ditemukan</h3>
+          <p>Tidak ada hidangan yang cocok dengan kata kunci pencarian atau kategori yang Anda pilih. Silakan gunakan kata kunci lain atau klik tombol Reset Filter.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. SUASANA RESTORAN & ULASAN GOOGLE MAPS -->
+    <section id="ulasan" class="customer-reviews-section" aria-labelledby="reviews-title">
+      <div class="container">
+        <header class="section-header">
+          <div class="reviews-meta-badge">
+            <span class="stars">★★★★★</span>
+            <span>Rating 4.8 / 5.0 di Google Maps</span>
+          </div>
+          <h2 id="reviews-title" class="section-title">Suasana Saung & Ulasan Pelanggan</h2>
+          <p class="section-subtitle">
+            Momen kehangatan santap bersama para pelanggan tercinta di saung lesehan Saung Haji Amir, Cisauk.
+          </p>
+        </header>
+
+        <div class="reviews-grid">
+          <article class="review-card">
+            <img src="assets/images/customer1.jpeg" alt="Kumpul Keluarga Besar Santap Bersama di Saung H. Amir" class="review-img">
+            <div class="review-content">
+              <span class="stars">★★★★★</span>
+              <p class="review-quote">
+                "Tempatnya adem dan luas banget, cocok buat arisan atau kumpul keluarga besar. Masakan Sundanya juara, terutama gurame pesmol dan sayur asemnya nampol!"
+              </p>
+              <span class="review-author">— Ibu Ratna & Keluarga (Google Maps Review)</span>
+            </div>
+          </article>
+
+          <article class="review-card">
+            <img src="assets/images/customer2.jpeg" alt="Sajian Gurame dan Hidangan Meja Saung H. Amir" class="review-img">
+            <div class="review-content">
+              <span class="stars">★★★★★</span>
+              <p class="review-quote">
+                "Makanannya dimasak dadakan jadi beneran fresh pas disajikan. Sambel goang dan tumis peda petenya bikin nambah nasi berkali-kali. Pas weekend ada kolak gratis lagi!"
+              </p>
+              <span class="review-author">— Hendra Wijaya (Local Guide Google)</span>
+            </div>
+          </article>
+
+          <article class="review-card">
+            <img src="assets/images/customer3.jpeg" alt="Suasana Dapur Bakaran Tradisional dan Jamuan Tamu" class="review-img">
+            <div class="review-content">
+              <span class="stars">★★★★★</span>
+              <p class="review-quote">
+                "Koki bakaran langsung dari arang, aromanya harum banget. Teh poci dan bakwan jagungnya renyah gurih. Pelayanan cepat dan ramah, pasti balik lagi."
+              </p>
+              <span class="review-author">— Bpk. Agus Santoso (Google Maps Review)</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Bagian Tentang Kami & Keunggulan -->
+    <section id="tentang" class="section" aria-labelledby="about-title">
+      <div class="container">
+        <header class="section-header">
+          <span class="section-tag">Warisan Parahyangan</span>
+          <h2 id="about-title" class="section-title">Tentang Saung Haji Amir</h2>
+          <p class="section-subtitle">
+            Hadir di kawasan Cisauk, Legok, Tangerang untuk menyajikan kehangatan makan bersama dengan cita rasa khas Parahyangan autentik.
+          </p>
+        </header>
+
+        <div class="about-grid">
+          <article class="about-card">
+            <div class="about-icon" aria-hidden="true">🏡</div>
+            <h3>Suasana Asri Saung Lesehan</h3>
+            <p>
+              Mengusung konsep saung tradisional yang sejuk dan asri, tempat yang tepat untuk melepas penat bersama keluarga, makan siang kantor, arisan, maupun reuni.
+            </p>
+          </article>
+
+          <article class="about-card">
+            <div class="about-icon" aria-hidden="true">🍳</div>
+            <h3>Filosofi Masak Dadakan</h3>
+            <p>
+              Kami tidak menyajikan masakan hangatan atau siap saji lama. Setiap hidangan baru diolah di atas wajan panas saat pesanan Anda masuk demi kenikmatan maksimal.
+            </p>
+          </article>
+
+          <article class="about-card">
+            <div class="about-icon" aria-hidden="true">🍲</div>
+            <h3>Kelezatan Tradisi Terjaga</h3>
+            <p>
+              Kombinasi bahan segar harian dan racikan rempah alami turun-temurun menghadirkan rasa gurih, sedap, dan otentik yang selalu dirindukan keluarga.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Bagian Keranjang & Formulir Reservasi / Take Away -->
+    <section id="pesan" class="section section-alt" aria-labelledby="order-title">
+      <div class="container">
+        <header class="section-header">
+          <span class="section-tag">Formulir Pemesanan</span>
+          <h2 id="order-title" class="section-title">Keranjang & Formulir Reservasi</h2>
+          <p class="section-subtitle">
+            Pilih apakah Anda ingin reservasi tempat makan di saung restoran atau memesan makanan untuk dibawa pulang (take away), lalu kirim ke WhatsApp resmi Saung H. Amir.
+          </p>
+        </header>
+
+        <div class="order-layout">
+          <!-- Kolom Kiri: Rincian Keranjang Pesanan -->
+          <div class="card-box">
+            <div class="card-box-header">
+              <h3 class="card-box-title">🧺 1. Rincian Menu Pesanan</h3>
+            </div>
+
+            <!-- Kontainer Item Keranjang (dirender via app.js) -->
+            <div id="cart-items" class="cart-items"></div>
+
+            <!-- Pesan Saat Keranjang Masih Kosong -->
+            <div id="empty-cart-message" class="empty-cart-box">
+              <p>Keranjang pesanan masih kosong.</p>
+              <p class="empty-cart-hint">Pilih hidangan dari katalog menu di atas dengan menekan tombol <strong>+ Tambah</strong>.</p>
+              <a href="#katalog" class="btn btn-outline btn-sm">Ke Katalog Menu ↑</a>
+            </div>
+
+            <!-- Tanggal Kedatangan / Ambil -->
+            <div class="form-group">
+              <label for="reservation-date">
+                Tanggal Kedatangan / Pengambilan <span class="required">*</span>
+              </label>
+              <input type="date" id="reservation-date" class="form-input" required>
+              <p id="date-error" class="form-error" role="alert" hidden></p>
+              <small class="form-hint">Pilih tanggal untuk menghitung total estimasi biaya pesanan.</small>
+            </div>
+
+            <!-- Kotak Total Estimasi Biaya -->
+            <div class="cart-summary-box">
+              <span class="summary-label">Total Estimasi Biaya:</span>
+              <strong id="estimated-total" class="summary-value">Pilih tanggal kedatangan untuk menghitung total estimasi</strong>
+            </div>
+          </div>
+
+          <!-- Kolom Kanan: Formulir Data Pemesan & Opsi Layanan -->
+          <div class="card-box">
+            <div class="card-box-header">
+              <h3 class="card-box-title">📋 2. Formulir Data Pemesan</h3>
+            </div>
+
+            <form id="checkout-form" novalidate>
+              <!-- Opsi Tipe Layanan: Reservasi Saung vs Take Away -->
+              <div class="form-group">
+                <label>Pilihan Tipe Pemesanan <span class="required">*</span></label>
+                <div class="service-type-toggle">
+                  <div class="service-type-option">
+                    <input type="radio" id="service-dine-in" name="serviceType" value="dine-in" checked>
+                    <label for="service-dine-in" class="service-type-label">
+                      <span>🏡 Makan di Tempat</span>
+                      <small style="font-weight: normal; font-size: 0.75rem;">(Reservasi Meja / Saung)</small>
+                    </label>
+                  </div>
+
+                  <div class="service-type-option">
+                    <input type="radio" id="service-take-away" name="serviceType" value="take-away">
+                    <label for="service-take-away" class="service-type-label">
+                      <span>🥡 Bawa Pulang</span>
+                      <small style="font-weight: normal; font-size: 0.75rem;">(Bungkus / Take Away)</small>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Baris Jam Kedatangan & Jumlah Tamu -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="reservation-time" id="time-label">
+                    Jam Kedatangan <span class="required">*</span>
+                  </label>
+                  <input type="time" id="reservation-time" name="reservationTime" class="form-input" value="12:00" min="10:00" max="17:00" required>
+                  <p id="time-error" class="form-error" role="alert" hidden></p>
+                  <small class="form-hint">Jam buka: 10.00 – 17.00 WIB</small>
+                </div>
+
+                <div class="form-group" id="guest-count-group">
+                  <label for="guest-count">
+                    Konfirmasi Jumlah Orang yang Datang <span class="required">*</span>
+                  </label>
+                  <input type="text" id="guest-count" name="guestCount" class="form-input" placeholder="Contoh: 5 Orang" required>
+                  <p id="guest-error" class="form-error" role="alert" hidden></p>
+                  <small class="form-hint">Konfirmasi jumlah tamu untuk penyiapan kapasitas saung lesehan.</small>
+                </div>
+              </div>
+
+              <!-- Pilihan Metode Pengambilan Pesanan Bungkus (Khusus Take Away) -->
+              <div class="form-group" id="takeaway-method-group" style="display: none;">
+                <label id="takeaway-method-label">Metode Pengambilan Pesanan Bungkus <span class="required">*</span></label>
+                <div class="takeaway-method-options" role="radiogroup" aria-labelledby="takeaway-method-label">
+                  <label class="takeaway-method-option">
+                    <input type="radio" name="takeawayMethod" value="self-pickup" id="takeaway-self" checked>
+                    <div class="takeaway-method-info">
+                      <span class="takeaway-method-title">🚶 Ambil Sendiri ke Resto</span>
+                      <small class="takeaway-method-desc">Datang langsung ke Saung H. Amir sesuai jam ambil</small>
+                    </div>
+                  </label>
+                  <label class="takeaway-method-option">
+                    <input type="radio" name="takeawayMethod" value="gosend" id="takeaway-gosend">
+                    <div class="takeaway-method-info">
+                      <span class="takeaway-method-title">🛵 Diambil Kurir Go-Send / GrabExpress</span>
+                      <small class="takeaway-method-desc">Pesanan disiapkan oleh restoran untuk diserahkan ke kurir</small>
+                    </div>
+                  </label>
+                </div>
+                <div id="gosend-notice" class="info-notice" style="display: none;">
+                  <span>💡 <strong>Info Kurir Go-Send / GrabExpress:</strong> Makanan akan disiapkan di dapur Saung H. Amir sesuai jam pengambilan yang Anda tentukan. Titik penjemputan kurir: <em>Saung Haji Amir, Cileutik, Cisauk</em>.</span>
+                </div>
+              </div>
+
+              <!-- Pilihan Sarung Tangan Plastik (Hand Glove) Khusus Take Away -->
+              <div class="form-group" id="handglove-group" style="display: none;">
+                <label id="handglove-label">Sarung Tangan Plastik (Hand Glove) <span class="required">*</span></label>
+                <div class="handglove-options" role="radiogroup" aria-labelledby="handglove-label">
+                  <label class="handglove-option">
+                    <input type="radio" name="needHandGlove" value="yes" id="handglove-yes">
+                    <span class="handglove-option-label">🧤 Ya, Perlu Sarung Tangan Plastik</span>
+                  </label>
+                  <label class="handglove-option">
+                    <input type="radio" name="needHandGlove" value="no" id="handglove-no" checked>
+                    <span class="handglove-option-label">❌ Tidak Perlu</span>
+                  </label>
+                </div>
+                <small class="form-hint">Disediakan sarung tangan plastik sekali pakai agar santap hidangan bungkus lebih nyaman dan higienis.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="customer-name">
+                  Nama Lengkap Pemesan <span class="required">*</span>
+                </label>
+                <input type="text" id="customer-name" name="customerName" class="form-input" placeholder="Contoh: Bpk. Budi Santoso" autocomplete="name" required>
+                <p id="name-error" class="form-error" role="alert" hidden></p>
+              </div>
+
+              <div class="form-group">
+                <label for="group-name">
+                  Instansi / Nama Rombongan <span class="optional">(Opsional)</span>
+                </label>
+                <input type="text" id="group-name" name="groupName" class="form-input" placeholder="Contoh: Keluarga Bpk. Budi / Alumni SMA" autocomplete="organization">
+              </div>
+
+              <div class="form-group">
+                <label for="customer-phone">
+                  Nomor WhatsApp Aktif <span class="required">*</span>
+                </label>
+                <input type="tel" id="customer-phone" name="customerPhone" class="form-input" placeholder="Contoh: 081219569995" autocomplete="tel" required>
+                <p id="phone-error" class="form-error" role="alert" hidden></p>
+                <small class="form-hint">Awalan 08 atau 62 (8 hingga 15 digit).</small>
+              </div>
+
+              <div class="form-group">
+                <label for="customer-notes">
+                  Catatan Khusus <span class="optional">(Opsional)</span>
+                </label>
+                <textarea id="customer-notes" name="customerNotes" class="form-textarea" rows="3" placeholder="Tingkat kepedasan sambal, permintaan saung lesehan tertentu, atau instruksi khusus..."></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block btn-lg">Tinjau Pesanan & Lanjutkan</button>
+            </form>
+          </div>
+
+          <!-- Panel Tinjauan (Review) Pesanan Sebelum Kirim ke WhatsApp -->
+          <div id="review-panel" class="review-panel" hidden>
+            <div class="review-card">
+              <h3>✅ Tinjau & Konfirmasi Reservasi</h3>
+              <p class="review-intro">
+                Pastikan seluruh rincian menu pesanan, tipe layanan, dan jam kedatangan Anda sudah tepat sebelum dialihkan ke WhatsApp resmi Saung H. Amir.
+              </p>
+
+              <!-- Rincian Pesanan (dirender dinamis via app.js dalam format <dl>) -->
+              <div id="review-details"></div>
+
+              <div class="review-actions">
+                <button type="button" id="edit-order-btn" class="btn btn-secondary">✏️ Ubah Data Pesanan</button>
+                <a id="whatsapp-link" class="btn btn-whatsapp" target="_blank" rel="noopener noreferrer">💬 Kirim Pesanan ke WhatsApp Restoran</a>
+                <p id="config-warning" class="alert-warning" role="alert" hidden>Nomor WhatsApp restoran belum terkonfigurasi pada sistem.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Bagian Kontak & Lokasi Restoran -->
+    <section id="kontak" class="section" aria-labelledby="contact-title">
+      <div class="container">
+        <header class="section-header">
+          <span class="section-tag">Pelayanan & Lokasi</span>
+          <h2 id="contact-title" class="section-title">Hubungi Saung H. Amir</h2>
+          <p class="section-subtitle">
+            Silakan hubungi kami untuk pertanyaan katering, pesanan nasi kotak, atau reservasi rombongan besar.
+          </p>
+        </header>
+
+        <div class="contact-grid">
+          <div class="contact-card">
+            <div class="contact-icon" aria-hidden="true">📱</div>
+            <h3>WhatsApp & Telepon</h3>
+            <p>Layanan reservasi saung, pesanan nasi liwet, dan pesanan dadakan.</p>
+            <p class="contact-highlight">
+              <a href="https://wa.me/6281219569995" target="_blank" rel="noopener noreferrer">0812-1956-9995</a><br>
+              <a href="tel:085810559575">0858-1055-9575</a>
+            </p>
+          </div>
+
+          <div class="contact-card">
+            <div class="contact-icon" aria-hidden="true">🕒</div>
+            <h3>Jam Operasional</h3>
+            <p>Buka setiap hari melayani santap siang hingga sore hari.</p>
+            <p class="contact-highlight">Senin – Minggu<br>10.00 – 17.00 WIB</p>
+          </div>
+
+          <div class="contact-card">
+            <div class="contact-icon" aria-hidden="true">📍</div>
+            <h3>Alamat Restoran</h3>
+            <p>Lokasi strategis dengan area parkir luas dan saung asri.</p>
+            <p class="contact-highlight">Cileutik, Jl. Raya Cisauk, Legok, Tangerang - Banten</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer Situs -->
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <h3>Saung Haji Amir</h3>
+        <p>
+          Spesialis masakan khas tradisional Sunda terpercaya di Cisauk, Legok, Tangerang. 
+          Menyajikan hidangan autentik dimasak dadakan dengan cita rasa rempah asli Parahyangan.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Navigasi Halaman</h4>
+        <ul class="footer-links">
+          <li><a href="#beranda">Beranda</a></li>
+          <li><a href="#buku-menu">Lembar Menu Asli</a></li>
+          <li><a href="#katalog">Katalog Pesanan</a></li>
+          <li><a href="#ulasan">Ulasan Tamu Google Maps</a></li>
+          <li><a href="#pesan">Reservasi & Order</a></li>
+          <li><a href="#kontak">Hubungi Kami</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Jam & Alamat</h4>
+        <p>Setiap Hari: 10.00 - 17.00 WIB</p>
+        <p>Cileutik, Jl. Raya Cisauk, Legok, Tangerang - Banten</p>
+        <p>WA: 0812-1956-9995</p>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <p>&copy; 2026 <strong>Saung Haji Amir (SAHA)</strong>. Hak Cipta Dilindungi. Desain Semantik HTML5 & CSS Modern.</p>
+    </div>
+  </footer>
+
+  <!-- Modal / Bottom Sheet Detail Menu (Gaya GoFood untuk Layar HP & Laptop) -->
+  <div id="product-modal" class="product-modal" role="dialog" aria-modal="true" aria-labelledby="modal-product-title" hidden>
+    <div class="product-modal-backdrop" id="modal-backdrop"></div>
+    <div class="product-modal-sheet">
+      <div class="product-modal-drag-indicator" aria-hidden="true"></div>
+      <button type="button" class="product-modal-close" id="modal-close-btn" aria-label="Tutup Detail Menu">✕</button>
+      
+      <div class="product-modal-scroll">
+        <div class="product-modal-img-wrap">
+          <img id="modal-product-img" src="" alt="" class="product-modal-img">
+          <span id="modal-favorite-badge" class="modal-favorite-badge" hidden>🔥 MENU FAVORIT MEJA</span>
+        </div>
+
+        <div class="product-modal-content">
+          <div class="product-modal-header-tags">
+            <span id="modal-product-category" class="product-category"></span>
+            <span id="modal-favorite-tag" class="badge-favorite-tag" hidden>🔥 Rekomendasi Favorit</span>
+          </div>
+
+          <h3 id="modal-product-title" class="product-modal-title"></h3>
+          <p id="modal-product-spec" class="product-spec"></p>
+          <p id="modal-product-desc" class="product-modal-desc"></p>
+
+          <!-- Opsi Dinamis: Pilihan Gula Minuman atau Dropdown Paket Berlima -->
+          <div id="modal-product-options" class="product-modal-options"></div>
+        </div>
+      </div>
+
+      <div class="product-modal-footer">
+        <div class="product-modal-price-box">
+          <span class="product-modal-price-label">Total Harga</span>
+          <strong id="modal-product-price" class="product-modal-price">Rp 0</strong>
+        </div>
+        <button type="button" id="modal-add-btn" class="btn btn-primary product-modal-add-btn">
+          + Tambah ke Pesanan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Shortcut Bar: Reservasi & Order Cepat (Mudah Diakses di Semua Halaman) -->
+  <aside id="floating-order-bar" class="floating-order-bar" aria-label="Akses Cepat Keranjang dan Formulir Reservasi">
+    <div class="floating-order-inner">
+      <div class="floating-order-left">
+        <span class="floating-cart-badge">
+          <span aria-hidden="true">🧺</span>
+          <span id="floating-cart-count">0 Menu</span>
+        </span>
+        <span class="floating-cart-divider">|</span>
+        <span class="floating-cart-total-label">Estimasi:</span>
+        <strong id="floating-cart-total" class="floating-cart-total">Rp 0</strong>
+      </div>
+      <a href="#pesan" id="floating-order-btn" class="floating-order-btn">
+        <span>Reservasi & Order</span>
+        <span aria-hidden="true" class="floating-order-arrow">→</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Modul JavaScript Terstruktur (Dukungan Universal Browser & file://) -->
+  <script src="js/config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/checkout.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
