@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kasir POS & Tagihan | Saung H. Amir</title>
+  <meta name="description" content="Sistem Point of Sale (POS), Tagihan Meja, Pelunasan Kasir, dan Rekap Pemasukan Saung H. Amir.">
+  <link rel="stylesheet" href="css/kasir.css">
+  <link rel="icon" type="image/jpeg" href="assets/images/logokecil.jpeg">
+</head>
+<body>
+
+  <!-- Layar Proteksi PIN Kasir -->
+  <div id="pin-overlay" class="pin-overlay">
+    <div class="pin-modal">
+      <div class="pin-modal-icon">🔒</div>
+      <h2 class="pin-modal-title">Akses Kasir POS</h2>
+      <p class="pin-modal-desc">Masukkan PIN atau Password Staf Kasir.</p>
+      
+      <form id="pin-form" onsubmit="return false;">
+        <div class="pin-input-group">
+          <input 
+            type="password" 
+            id="pin-input" 
+            class="pin-input" 
+            placeholder="••••••••" 
+            autocomplete="off" 
+            autofocus
+          >
+        </div>
+        <p id="pin-error" class="pin-error"></p>
+        <button type="submit" id="pin-submit-btn" class="pin-submit-btn">Buka Kasir POS</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Header POS Kasir -->
+  <header class="pos-header">
+    <div class="pos-brand">
+      <img src="assets/images/logokecil.jpeg" alt="Logo Saung H. Amir" class="pos-brand-logo">
+      <div class="pos-brand-text">
+        <h1>Saung H. Amir</h1>
+        <span class="pos-brand-tag">POS & Kasir Tagihan</span>
+      </div>
+    </div>
+
+    <div class="pos-header-center">
+      <div id="pos-live-clock" class="pos-live-clock">--:--:-- WIB</div>
+    </div>
+
+    <div class="pos-header-actions">
+      <a href="dapur.html" class="pos-nav-link" target="_blank" rel="noopener" title="Buka Layar Antrean Dapur Koki">
+        <span>🍳 Layar Dapur</span>
+      </a>
+      <a href="index.html" class="pos-nav-link" target="_blank" rel="noopener" title="Buka Web Pemesanan Pelanggan">
+        <span>🌐 Web Pelanggan</span>
+      </a>
+      <button type="button" id="pos-lock-btn" class="pos-lock-btn" title="Kunci Layar POS">
+        <span>🔒 Kunci</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigasi 3 Tab Kasir POS Utama -->
+  <nav class="pos-tabs" role="tablist">
+    <button type="button" class="pos-tab-btn active" id="tab-btn-input" data-tab="pane-input" role="tab" aria-selected="true">
+      <span>📝 Input Pesanan</span>
+    </button>
+    <button type="button" class="pos-tab-btn" id="tab-btn-tagihan" data-tab="pane-tagihan" role="tab" aria-selected="false">
+      <span>💳 Tagihan & Pembayaran</span>
+      <span id="badge-unpaid-tables" class="pos-tab-badge">0 Meja</span>
+    </button>
+    <button type="button" class="pos-tab-btn" id="tab-btn-rekap" data-tab="pane-rekap" role="tab" aria-selected="false">
+      <span>📊 Rekap Pemasukan</span>
+      <span id="badge-rekap-total" class="pos-tab-badge">Rp 0</span>
+    </button>
+  </nav>
+
+  <!-- ====================================================================
+       TAB 1: INPUT PESANAN (KATALOG RINGKAS ALA RESTOQU & KERANJANG)
+       ==================================================================== -->
+  <main id="pane-input" class="pos-tab-pane active">
+    <div class="pos-container">
+      
+      <!-- Kolom Kiri: Filter Kategori + Pencarian Cepat + Grid Tombol Menu Super Rapat -->
+      <section class="pos-menu-panel" aria-label="Katalog Menu POS">
+        <div class="pos-filter-bar">
+          <!-- Input Pencarian Cepat & Tombol Tambah Menu Kasir -->
+          <div class="pos-search-action-row">
+            <div class="pos-search-box">
+              <span class="pos-search-icon" aria-hidden="true">🔍</span>
+              <input 
+                type="search" 
+                id="pos-search" 
+                class="pos-search-input" 
+                placeholder="Ketik cari menu (contoh: ayam, gurame, sambal, nila)..." 
+                autocomplete="off"
+              >
+              <button type="button" id="pos-search-clear" class="pos-search-clear" title="Hapus Pencarian" hidden>✕</button>
+            </div>
+            <button type="button" id="btn-open-custom-menu" class="btn-add-custom-menu" title="Tambah Menu Baru Khusus Kasir POS">
+              <span>➕ Tambah Menu</span>
+            </button>
+          </div>
+
+          <!-- Filter Pill Kategori -->
+          <div id="pos-categories" class="pos-categories-pills" role="tablist" aria-label="Kategori Menu"></div>
+        </div>
+
+        <!-- Banner Mode Ojol Aktif -->
+        <div id="pos-ojol-banner" class="pos-ojol-banner" style="display: none;">
+          <span>🛵 <strong>Mode Ojol Aktif:</strong> Menampilkan harga GoFood & hanya menu khusus Ojol.</span>
+          <span id="pos-ojol-menu-count">0 Menu</span>
+        </div>
+
+        <!-- Grid Tombol Menu Super Rapat (HANYA Nama Menu & Harga Hijau) -->
+        <div class="pos-grid-scroll">
+          <div id="pos-menu-grid" class="pos-menu-grid"></div>
+        </div>
+      </section>
+
+      <!-- Kolom Kanan: Panel Keranjang & Pengaturan Pesanan -->
+      <section class="pos-cart-panel" aria-label="Keranjang & Checkout POS">
+        <div class="pos-cart-header">
+          <h2 class="pos-cart-title">
+            <span>🛒 Pesanan Baru</span>
+            <span id="pos-cart-count-badge" class="pos-tab-badge">0 Item</span>
+          </h2>
+          <button type="button" id="pos-clear-cart-btn" class="pos-cart-clear-btn" title="Kosongkan Pesanan">
+            🗑️ Kosongkan
+          </button>
+        </div>
+
+        <!-- Pengaturan Meja & Sakelar Mode Ojol -->
+        <div class="pos-cart-controls">
+          <div class="pos-control-group">
+            <label for="pos-table-select" class="pos-control-label">Nomor Meja / Layanan:</label>
+            <select id="pos-table-select" class="pos-select">
+              <option value="Meja 1">Meja 1</option>
+              <option value="Meja 2">Meja 2</option>
+              <option value="Meja 3">Meja 3</option>
+              <option value="Meja 4">Meja 4</option>
+              <option value="Meja 5">Meja 5</option>
+              <option value="Meja 6">Meja 6</option>
+              <option value="Meja 7">Meja 7</option>
+              <option value="Meja 8">Meja 8</option>
+              <option value="Meja 9">Meja 9</option>
+              <option value="Meja 10">Meja 10</option>
+              <option value="Meja 11">Meja 11</option>
+              <option value="Meja 12">Meja 12</option>
+              <option value="Meja 13">Meja 13</option>
+              <option value="Meja 14">Meja 14</option>
+              <option value="Meja 15">Meja 15</option>
+              <option value="Take-Away">Take-Away (Bungkus)</option>
+            </select>
+          </div>
+
+          <!-- Sakelar Toggle Mode Ojol -->
+          <div class="pos-ojol-switch-box">
+            <div class="pos-ojol-switch-label">
+              <span class="pos-ojol-switch-title">🛵 Tarif Ojol (GoFood/Grab)</span>
+            </div>
+            <label class="pos-switch-toggle">
+              <input type="checkbox" id="pos-ojol-toggle">
+              <span class="pos-switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Input Kode Referensi Ojol -->
+          <div id="pos-ojol-code-group" class="pos-control-group" style="display: none;">
+            <label for="pos-ojol-code" class="pos-control-label" style="color: #1e40af;">
+              Kode Referensi / Kode Gojek <span style="color: #dc2626;">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="pos-ojol-code" 
+              class="pos-ojol-code-input" 
+              placeholder="Contoh: GF-1234 atau 4 digit pin" 
+              autocomplete="off"
+            >
+          </div>
+        </div>
+
+        <!-- Daftar Item Pesanan dalam Keranjang POS -->
+        <div id="pos-cart-items" class="pos-cart-items-scroll">
+          <div class="pos-cart-empty">
+            <span class="pos-cart-empty-icon">🍽️</span>
+            <p style="font-weight: 700; color: #475569;">Belum ada menu dipilih</p>
+            <small>Klik tombol menu di sebelah kiri untuk menambah</small>
+          </div>
+        </div>
+
+        <!-- Ringkasan Total & Tombol Kirim Pesanan -->
+        <div class="pos-cart-footer">
+          <div class="pos-total-row">
+            <span class="pos-total-label">Total Tagihan:</span>
+            <strong id="pos-cart-total" class="pos-total-amount">Rp 0</strong>
+          </div>
+
+          <button type="button" id="pos-send-order-btn" class="pos-send-btn">
+            <span aria-hidden="true">🚀</span>
+            <span id="pos-send-btn-text">Kirim Pesanan ke Dapur</span>
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ====================================================================
+       TAB 2: TAGIHAN & PEMBAYARAN KASIR (PENGGABUNGAN BON MEJA)
+       ==================================================================== -->
+  <section id="pane-tagihan" class="pos-tab-pane">
+    <div class="pos-tagihan-container">
+      <div id="cashier-bills-container" class="cashier-bills-grid">
+        <div class="pos-cart-empty">
+          <span class="pos-cart-empty-icon">💳</span>
+          <p style="font-weight: 700; color: #475569;">Semua Tagihan Sudah Lunas</p>
+          <small>Tidak ada tagihan meja yang berstatus belum lunas saat ini.</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       TAB 3: REKAP PEMASUKAN DENGAN FILTER RENTANG WAKTU (HARIAN / MINGGUAN)
+       ==================================================================== -->
+  <section id="pane-rekap" class="pos-tab-pane">
+    <div class="pos-rekap-container">
+      
+      <!-- Filter Rentang Waktu (Harian / Mingguan / Kustom) -->
+      <div class="rekap-filter-card">
+        <div class="rekap-filter-header">
+          <strong style="font-size: 1rem; color: #0f172a;">📅 Filter Rentang Waktu Pemasukan:</strong>
+          <div class="rekap-presets">
+            <button type="button" class="btn-preset active" data-preset="today">Hari Ini</button>
+            <button type="button" class="btn-preset" data-preset="yesterday">Kemarin</button>
+            <button type="button" class="btn-preset" data-preset="week">1 Minggu Ini (7 Hari)</button>
+            <button type="button" class="btn-preset" data-preset="month">Bulan Ini</button>
+            <button type="button" class="btn-preset" data-preset="all">Semua Riwayat</button>
+          </div>
+        </div>
+
+        <div class="rekap-custom-dates">
+          <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">Dari Tanggal:</label>
+          <input type="date" id="rekap-start-date" class="date-filter-input">
+          <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">Sampai:</label>
+          <input type="date" id="rekap-end-date" class="date-filter-input">
+          <button type="button" id="btn-apply-filter" class="btn-apply-filter">Terapkan Filter</button>
+        </div>
+      </div>
+
+      <!-- Kartu Ringkasan KPI Pemasukan Berdasarkan Filter -->
+      <div class="rekap-kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-title">💵 Total Tunai</span>
+          <strong id="kpi-tunai" class="kpi-value">Rp 0</strong>
+          <span id="kpi-tunai-count" class="kpi-sub">0 transaksi</span>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-title">📱 Total QRIS</span>
+          <strong id="kpi-qris" class="kpi-value">Rp 0</strong>
+          <span id="kpi-qris-count" class="kpi-sub">0 transaksi</span>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-title">💳 Total Debit</span>
+          <strong id="kpi-debit" class="kpi-value">Rp 0</strong>
+          <span id="kpi-debit-count" class="kpi-sub">0 transaksi</span>
+        </div>
+
+        <div class="kpi-card kpi-grand">
+          <span class="kpi-title">⭐ Grand Total Pemasukan</span>
+          <strong id="kpi-grand-total" class="kpi-value">Rp 0</strong>
+          <span id="kpi-total-transaksi" class="kpi-sub">Total 0 transaksi</span>
+        </div>
+      </div>
+
+      <!-- Tabel Riwayat Transaksi Sesuai Rentang Waktu & Download CSV/Excel -->
+      <div class="rekap-table-card">
+        <div class="rekap-table-header">
+          <div>
+            <h3 style="font-size: 1.1rem; font-weight: 800; color: #0f172a;" id="rekap-table-title">Daftar Transaksi Lunas</h3>
+            <span style="font-size: 0.78rem; color: #64748b;" id="rekap-range-label">Menampilkan data hari ini</span>
+          </div>
+          <button type="button" id="btn-download-csv" class="btn-download-csv">
+            <span aria-hidden="true">📥</span>
+            <span>Download Rekap (Excel/CSV)</span>
+          </button>
+        </div>
+
+        <div class="rekap-table-wrap">
+          <table class="rekap-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Waktu Transaksi</th>
+                <th>Meja / Layanan</th>
+                <th>Menu Pesanan</th>
+                <th>Metode</th>
+                <th style="text-align: right;">Total Tagihan</th>
+              </tr>
+            </thead>
+            <tbody id="rekap-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; color: #94a3b8; padding: 2rem;">
+                  Tidak ada transaksi tercatat pada rentang tanggal ini.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       MODAL PEMBAYARAN TUNAI (HITUNG KEMBALIAN REAL-TIME)
+       ==================================================================== -->
+  <div id="cash-modal" class="cash-modal-overlay" style="display: none;">
+    <div class="cash-modal-box">
+      <div class="cash-modal-header">
+        <h3 id="cash-modal-title">💵 Pembayaran Tunai</h3>
+        <button type="button" id="close-cash-modal" class="cash-modal-close">✕</button>
+      </div>
+
+      <div class="cash-modal-body">
+        <div class="cash-modal-total-box">
+          <span>Total Tagihan:</span>
+          <strong id="cash-modal-total">Rp 0</strong>
+        </div>
+
+        <div class="pos-control-group">
+          <label for="cash-received-input" class="pos-control-label" style="font-size: 0.88rem;">
+            Uang Diterima dari Pelanggan:
+          </label>
+          <input 
+            type="number" 
+            id="cash-received-input" 
+            class="cash-input" 
+            placeholder="0" 
+            min="0" 
+            step="1000"
+          >
+        </div>
+
+        <!-- Tombol Cepat Pecahan Uang (Quick Denominations) -->
+        <div class="cash-quick-denominations">
+          <button type="button" class="quick-cash-btn btn-exact" id="btn-quick-exact">Uang Pas</button>
+          <button type="button" class="quick-cash-btn" data-val="20000">20.000</button>
+          <button type="button" class="quick-cash-btn" data-val="50000">50.000</button>
+          <button type="button" class="quick-cash-btn" data-val="100000">100.000</button>
+          <button type="button" class="quick-cash-btn" data-val="200000">200.000</button>
+          <button type="button" class="quick-cash-btn" data-val="500000">500.000</button>
+        </div>
+
+        <!-- Kotak Hitung Kembalian Real-Time -->
+        <div id="cash-change-box" class="cash-modal-change-box">
+          <span id="cash-change-label" style="font-weight: 700;">Kembalian:</span>
+          <strong id="cash-modal-change" class="change-amount">Rp 0</strong>
+        </div>
+      </div>
+
+      <div class="cash-modal-footer">
+        <button type="button" id="cancel-cash-btn" class="btn-modal-cancel">Batal</button>
+        <button type="button" id="confirm-cash-btn" class="btn-modal-confirm" disabled>
+          ✅ Proses Pembayaran (Lunas)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tambah Menu Baru Khusus Kasir POS -->
+  <div id="custom-menu-modal" class="pos-modal-overlay" style="display: none;">
+    <div class="pos-modal-box custom-menu-modal-box">
+      <header class="pos-modal-header">
+        <h3 class="pos-modal-title">➕ Tambah Menu Baru Kasir</h3>
+        <button type="button" id="btn-close-custom-menu-modal" class="pos-modal-close" title="Tutup">✕</button>
+      </header>
+      <div class="pos-modal-body">
+        <p class="custom-menu-hint">Menu ini tersimpan khusus di Kasir POS Anda (misal: <em>Nasi Box, Ongkir Gosend, Bakwan 1/5, Tambahan Lauk, dll</em>).</p>
+        <form id="custom-menu-form" onsubmit="return false;">
+          <div class="pos-control-group" style="margin-bottom: 0.85rem;">
+            <label for="custom-menu-name" class="pos-control-label">Nama Menu / Item <span class="required" style="color: #ef4444;">*</span></label>
+            <input type="text" id="custom-menu-name" class="pos-form-input" placeholder="Contoh: Nasi Box Ayam Bakar, Ongkir Gosend..." required autocomplete="off">
+          </div>
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.85rem;">
+            <div class="pos-control-group">
+              <label for="custom-menu-category" class="pos-control-label">Kategori <span class="required" style="color: #ef4444;">*</span></label>
+              <select id="custom-menu-category" class="pos-form-select">
+                <option value="Lauk">Lauk</option>
+                <option value="Nasi">Nasi</option>
+                <option value="Sayur">Sayur</option>
+                <option value="Pepes & Ikan Asin">Pepes & Ikan Asin</option>
+                <option value="Sambal">Sambal</option>
+                <option value="Minuman">Minuman</option>
+              </select>
+            </div>
+            <div class="pos-control-group">
+              <label for="custom-menu-price" class="pos-control-label">Harga Reguler (Rp) <span class="required" style="color: #ef4444;">*</span></label>
+              <input type="number" id="custom-menu-price" class="pos-form-input" min="0" step="500" placeholder="25000" required>
+            </div>
+          </div>
+          <div class="pos-control-group" style="margin-bottom: 1rem;">
+            <label for="custom-menu-gofood-price" class="pos-control-label">Harga GoFood (Rp) <span style="font-size: 0.75rem; color: #94a3b8; font-weight: normal;">(Opsional, kosongkan jika sama)</span></label>
+            <input type="number" id="custom-menu-gofood-price" class="pos-form-input" min="0" step="500" placeholder="Kosongkan jika sama dengan harga reguler">
+          </div>
+          <button type="submit" id="btn-save-custom-menu" class="btn-save-custom-menu">
+            💾 Simpan ke Menu Kasir
+          </button>
+        </form>
+
+        <!-- Daftar Menu Tambahan Kasir yang Sudah Tersimpan -->
+        <div class="custom-menu-list-section">
+          <div class="custom-menu-list-header">
+            <strong>📋 Menu Tambahan Tersimpan (<span id="custom-menu-count">0</span>)</strong>
+          </div>
+          <div id="custom-menu-list-items" class="custom-menu-list-items">
+            <p style="font-size: 0.82rem; color: #94a3b8; text-align: center; padding: 0.75rem;">Belum ada menu tambahan kasir.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Area Render Struk Thermal Bluetooth (58mm/80mm) -->
+  <div id="thermal-print-area"></div>
+
+  <!-- Toast Notifikasi Ringan -->
+  <div id="pos-toast" class="pos-toast" role="alert" aria-live="polite"></div>
+
+  <!-- Scripts: Logika Kasir Modular ES Module Tunggal -->
+  <script type="module" src="js/kasir.js"></script>
+
+</body>
+</html>

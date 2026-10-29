@@ -29,6 +29,9 @@
       reservationTime: '12:00',
       needHandGlove: false,
       takeawayMethod: 'self-pickup',
+      tableNumber: '',
+      isOjol: false,
+      ojolRefCode: '',
       storageAvailable: true,
       expiredDateCleared: false
     };
@@ -88,6 +91,9 @@
           : '12:00';
       const needHandGlove = Boolean(parsed.needHandGlove);
       const takeawayMethod = parsed.takeawayMethod === 'gosend' ? 'gosend' : 'self-pickup';
+      const tableNumber = typeof parsed.tableNumber === 'string' ? parsed.tableNumber : '';
+      const isOjol = Boolean(parsed.isOjol);
+      const ojolRefCode = typeof parsed.ojolRefCode === 'string' ? parsed.ojolRefCode : '';
 
       return {
         items: sanitizedItems,
@@ -96,6 +102,9 @@
         reservationTime,
         needHandGlove,
         takeawayMethod,
+        tableNumber,
+        isOjol,
+        ojolRefCode,
         storageAvailable: true,
         expiredDateCleared
       };
@@ -110,7 +119,10 @@
     serviceType = 'dine-in',
     reservationTime = '12:00',
     needHandGlove = false,
-    takeawayMethod = 'self-pickup'
+    takeawayMethod = 'self-pickup',
+    tableNumber = '',
+    isOjol = false,
+    ojolRefCode = ''
   ) {
     try {
       const config = getBusinessConfig();
@@ -131,7 +143,10 @@
         serviceType: serviceType || 'dine-in',
         reservationTime: reservationTime || '12:00',
         needHandGlove: Boolean(needHandGlove),
-        takeawayMethod: takeawayMethod === 'gosend' ? 'gosend' : 'self-pickup'
+        takeawayMethod: takeawayMethod === 'gosend' ? 'gosend' : 'self-pickup',
+        tableNumber: tableNumber || '',
+        isOjol: Boolean(isOjol),
+        ojolRefCode: ojolRefCode || ''
       };
       window.localStorage.setItem(config.STORAGE_KEY, JSON.stringify(payload));
       return true;

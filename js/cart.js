@@ -96,31 +96,35 @@
     );
   }
 
-  function calculateCartSummary(items, catalog, reservationDate) {
+  function calculateCartSummary(items, catalog, reservationDate, isOjol = false) {
     const dateCheck = validateReservationDate(reservationDate);
     const catalogMap = new Map((catalog || []).map((product) => [product.id, product]));
 
     const detailedItems = [];
     let totalUnits = 0;
     let totalPrice = 0;
+    const markupMultiplier = isOjol ? 1.2 : 1.0;
 
     for (const item of (items || [])) {
       const product = catalogMap.get(item.productId);
       if (!product || !isValidQuantity(item.quantity)) continue;
 
-      const unitPrice =
+      const basePrice =
         typeof item.customPrice === 'number' && item.customPrice > 0
           ? item.customPrice
           : product.dailyPrice;
 
+      const unitPrice = isOjol ? Math.round(basePrice * markupMultiplier) : basePrice;
       const subtotal = unitPrice * item.quantity;
       totalUnits += item.quantity;
       totalPrice += subtotal;
+
       detailedItems.push({
         productId: product.id,
         name: product.name,
         specification: product.specification,
         option: (item.option || '').trim(),
+        basePrice: basePrice,
         unitPrice: unitPrice,
         customPrice: item.customPrice || null,
         quantity: item.quantity,
@@ -134,7 +138,8 @@
       totalPrice: dateCheck.valid ? totalPrice : 0,
       rawTotalPrice: totalPrice,
       dateValid: dateCheck.valid,
-      dateMessage: dateCheck.message
+      dateMessage: dateCheck.message,
+      isOjol: Boolean(isOjol)
     };
   }
 

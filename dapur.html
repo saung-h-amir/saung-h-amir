@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Layar Dapur Siaga (KDS) | Saung H. Amir</title>
+  <meta name="description" content="Layar Dapur Real-time Siaga Pesanan dan Alarm Masak Saung H. Amir.">
+  <link rel="stylesheet" href="css/dapur.css">
+  <link rel="icon" type="image/jpeg" href="assets/images/logokecil.jpeg">
+</head>
+<body>
+
+  <!-- Layar Proteksi PIN Dapur -->
+  <div id="pin-overlay" class="pin-overlay">
+    <div class="pin-modal">
+      <div class="pin-modal-icon">🔒</div>
+      <h2 class="pin-modal-title">Akses Layar Dapur</h2>
+      <p class="pin-modal-desc">Masukkan PIN atau Password Staf Dapur.</p>
+      
+      <form id="pin-form" onsubmit="return false;">
+        <input 
+          type="password" 
+          id="pin-input" 
+          class="pin-input" 
+          placeholder="••••••••" 
+          autocomplete="off" 
+          autofocus
+        >
+        <p id="pin-error" class="pin-error"></p>
+        <button type="submit" id="pin-submit-btn" class="pin-submit-btn">Buka Layar Dapur</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Header Layar Dapur (KDS) -->
+  <header class="dapur-header">
+    <div class="dapur-brand">
+      <img src="assets/images/logokecil.jpeg" alt="Logo Saung H. Amir" class="dapur-brand-logo">
+      <div>
+        <h1 class="dapur-brand-title">Saung H. Amir</h1>
+        <span class="dapur-brand-sub">Layar Dapur Siaga (KDS)</span>
+      </div>
+    </div>
+
+    <div class="dapur-header-center">
+      <div id="dapur-clock" class="dapur-live-clock">--:--:-- WIB</div>
+      <button type="button" id="btn-test-sound" class="audio-test-btn" title="Uji Coba Sirine & Kelap-Kelip Darurat">
+        <span aria-hidden="true">🚨</span>
+        <span>Tes Sirine & Flash</span>
+      </button>
+    </div>
+
+    <div class="dapur-header-actions">
+      <div class="header-badge-wrap">
+        <span id="badge-count-dapur" class="header-ticket-badge">0 Tiket Masuk</span>
+      </div>
+      <a href="kasir.html" class="dapur-nav-btn" title="Buka Halaman Kasir POS">
+        <span>💻 Kasir POS</span>
+      </a>
+      <a href="index.html" class="dapur-nav-btn" target="_blank" rel="noopener" title="Buka Web Pemesanan Pelanggan">
+        <span>🌐 Web Pelanggan</span>
+      </a>
+      <button type="button" id="dapur-lock-btn" class="dapur-lock-btn" title="Kunci Layar">
+        <span>🔒 Kunci</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Banner Status Dapur -->
+  <div class="dapur-subbar">
+    <div class="subbar-info">
+      <span class="subbar-dot"></span>
+      <strong>KITCHEN DISPLAY SYSTEM REAL-TIME</strong>
+      <span class="subbar-desc">— Pesanan baru langsung memicu sirine & kelap-kelip merah darurat.</span>
+    </div>
+  </div>
+
+  <!-- Konten Utama: Antrean Dapur -->
+  <main class="dapur-main">
+    <div id="kitchen-cards-container" class="kitchen-grid">
+      <!-- Kartu antrean dapur dirender dinamis via js/dapur.js -->
+      <div class="dapur-empty-state">
+        <span class="dapur-empty-icon">🍳</span>
+        <h3 class="dapur-empty-title">Dapur Siaga: Belum Ada Pesanan Masuk</h3>
+        <p>Pesanan baru dari QR Meja maupun Kasir POS akan otomatis muncul di sini disertai sirine keras dan kelap-kelip layar merah.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Area Render Tiket Thermal Dapur (58mm / 80mm ESC/POS) -->
+  <div id="thermal-print-area"></div>
+
+  <!-- Modular Script Logika Dapur -->
+  <script type="module" src="js/dapur.js"></script>
+
+</body>
+</html>

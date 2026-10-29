@@ -19,9 +19,13 @@
   <header class="site-header">
     <div class="top-bar">
       <div class="container top-bar-inner">
-        <span class="top-bar-item">🕒 Jam Operasional: Setiap Hari (10.00 - 17.00 WIB)</span>
-        <span class="top-bar-item">📞 Kontak / WA: 0812-1956-9995 / 0858-1055-9575</span>
-        <span class="top-bar-item">📍 Cileutik, Jl. Raya Cisauk, Legok, Tangerang</span>
+        <span class="top-bar-item">🕒 Setiap Hari (10.00 - 17.00 WIB)</span>
+        <span class="top-bar-item">📞 WA: 0812-1956-9995</span>
+        <span class="top-bar-item">📍 Cileutik, Cisauk, Legok</span>
+        <span class="top-bar-item staff-portal-top" style="margin-left: auto;">
+          <a href="kasir.html" style="color: #fde047; font-weight: 700; text-decoration: none; margin-right: 12px;" title="Buka Portal Kasir POS Staff">💻 Kasir POS</a>
+          <a href="dapur.html" style="color: #86efac; font-weight: 700; text-decoration: none;" title="Buka Layar Antrean Dapur & Kasir">🍳 Layar Dapur</a>
+        </span>
       </div>
     </div>
 
@@ -335,14 +339,15 @@
               <a href="#katalog" class="btn btn-outline btn-sm">Ke Katalog Menu ↑</a>
             </div>
 
-            <!-- Tanggal Kedatangan / Ambil -->
-            <div class="form-group">
-              <label for="reservation-date">
-                Tanggal Kedatangan / Pengambilan <span class="required">*</span>
+            <!-- Tanggal Kedatangan / Ambil (Dibuat Sangat Mencolok / Obvious Sesuai Instruksi) -->
+            <div class="form-group highlight-date-group">
+              <label for="reservation-date" class="highlight-date-label">
+                <span>📅 Tanggal Kedatangan / Pengambilan <span class="required" style="color: #dc2626; font-size: 1.1rem; font-weight: 900;">*</span></span>
+                <span class="badge-wajib-diisi">WAJIB DIISI</span>
               </label>
-              <input type="date" id="reservation-date" class="form-input" required>
+              <input type="date" id="reservation-date" class="form-input highlight-date-input" required>
               <p id="date-error" class="form-error" role="alert" hidden></p>
-              <small class="form-hint">Pilih tanggal untuk menghitung total estimasi biaya pesanan.</small>
+              <small class="form-hint highlight-date-hint">⚠️ Wajib memilih tanggal agar sistem dapur dapat menyiapkan pesanan Anda dan menghitung estimasi biaya.</small>
             </div>
 
             <!-- Kotak Total Estimasi Biaya -->
@@ -359,8 +364,60 @@
             </div>
 
             <form id="checkout-form" novalidate>
+              <!-- Pilihan Dropdown Nomor Meja atau Take-Away -->
+              <div class="form-group" id="table-number-group">
+                <label for="table-number">
+                  Nomor Meja / Layanan <span class="required">*</span>
+                </label>
+                <select id="table-number" name="tableNumber" class="form-select form-input" required>
+                  <option value="" disabled selected>-- Pilih Nomor Meja / Take-Away --</option>
+                  <option value="Meja 1">Meja 1</option>
+                  <option value="Meja 2">Meja 2</option>
+                  <option value="Meja 3">Meja 3</option>
+                  <option value="Meja 4">Meja 4</option>
+                  <option value="Meja 5">Meja 5</option>
+                  <option value="Meja 6">Meja 6</option>
+                  <option value="Meja 7">Meja 7</option>
+                  <option value="Meja 8">Meja 8</option>
+                  <option value="Meja 9">Meja 9</option>
+                  <option value="Meja 10">Meja 10</option>
+                  <option value="Meja 11">Meja 11</option>
+                  <option value="Meja 12">Meja 12</option>
+                  <option value="Meja 13">Meja 13</option>
+                  <option value="Meja 14">Meja 14</option>
+                  <option value="Meja 15">Meja 15</option>
+                  <option value="Take-Away (Bungkus)">Take-Away (Bungkus)</option>
+                </select>
+                <p id="table-error" class="form-error" role="alert" hidden></p>
+              </div>
+
+              <!-- Sakelar Switch Mode Ojol (GoFood/GrabFood) -->
+              <div class="form-group ojol-toggle-container">
+                <div class="ojol-toggle-wrapper">
+                  <label class="ojol-switch" for="ojol-mode-toggle" title="Aktifkan Mode Ojol untuk pesanan driver online">
+                    <input type="checkbox" id="ojol-mode-toggle" name="isOjol">
+                    <span class="ojol-slider"></span>
+                  </label>
+                  <label for="ojol-mode-toggle" class="ojol-label">
+                    <span class="ojol-title">🛵 Mode Ojol (GoFood/GrabFood)</span>
+                    <span class="ojol-badge-markup">+20% Komisi</span>
+                  </label>
+                </div>
+                <small class="form-hint">Aktifkan untuk pesanan driver online. Harga menu otomatis disesuaikan markup komisi +20%.</small>
+              </div>
+
+              <!-- Input Kode Referensi Pesanan (Otomatis tampil jika Mode Ojol aktif) -->
+              <div class="form-group" id="ojol-ref-group" style="display: none;">
+                <label for="ojol-ref-code">
+                  Kode Referensi Pesanan <span class="required">*</span>
+                </label>
+                <input type="text" id="ojol-ref-code" name="ojolRefCode" class="form-input" placeholder="Contoh: GF-1234 atau GR-5678" autocomplete="off">
+                <p id="ojol-ref-error" class="form-error" role="alert" hidden></p>
+                <small class="form-hint">Masukkan kode / nomor pesanan yang tertera pada aplikasi GoFood / GrabFood driver.</small>
+              </div>
+
               <!-- Opsi Tipe Layanan: Reservasi Saung vs Take Away -->
-              <div class="form-group">
+              <div class="form-group" id="service-type-container">
                 <label>Pilihan Tipe Pemesanan <span class="required">*</span></label>
                 <div class="service-type-toggle">
                   <div class="service-type-option">
@@ -459,7 +516,7 @@
 
               <div class="form-group">
                 <label for="customer-phone">
-                  Nomor WhatsApp Aktif <span class="required">*</span>
+                  Nomor WhatsApp / HP Aktif <span class="required">*</span>
                 </label>
                 <input type="tel" id="customer-phone" name="customerPhone" class="form-input" placeholder="Contoh: 081219569995" autocomplete="tel" required>
                 <p id="phone-error" class="form-error" role="alert" hidden></p>
@@ -473,16 +530,19 @@
                 <textarea id="customer-notes" name="customerNotes" class="form-textarea" rows="3" placeholder="Tingkat kepedasan sambal, permintaan saung lesehan tertentu, atau instruksi khusus..."></textarea>
               </div>
 
-              <button type="submit" class="btn btn-primary btn-block btn-lg">Tinjau Pesanan & Lanjutkan</button>
+              <button type="submit" id="submit-order-btn" class="btn btn-primary btn-block btn-lg btn-send-order">
+                <span class="btn-send-icon" aria-hidden="true">🔍</span>
+                <span id="submit-btn-text">Tinjau Pesanan</span>
+              </button>
             </form>
           </div>
 
-          <!-- Panel Tinjauan (Review) Pesanan Sebelum Kirim ke WhatsApp -->
+          <!-- Panel Tinjauan (Review) Pesanan Sebelum Kirim ke Dapur -->
           <div id="review-panel" class="review-panel" hidden>
             <div class="review-card">
-              <h3>✅ Tinjau & Konfirmasi Reservasi</h3>
+              <h3>✅ Tinjau & Konfirmasi Pesanan</h3>
               <p class="review-intro">
-                Pastikan seluruh rincian menu pesanan, tipe layanan, dan jam kedatangan Anda sudah tepat sebelum dialihkan ke WhatsApp resmi Saung H. Amir.
+                Pastikan seluruh rincian menu pesanan, nomor meja / kode referensi, dan jam kedatangan Anda sudah tepat sebelum dikirim ke dapur.
               </p>
 
               <!-- Rincian Pesanan (dirender dinamis via app.js dalam format <dl>) -->
@@ -490,8 +550,7 @@
 
               <div class="review-actions">
                 <button type="button" id="edit-order-btn" class="btn btn-secondary">✏️ Ubah Data Pesanan</button>
-                <a id="whatsapp-link" class="btn btn-whatsapp" target="_blank" rel="noopener noreferrer">💬 Kirim Pesanan ke WhatsApp Restoran</a>
-                <p id="config-warning" class="alert-warning" role="alert" hidden>Nomor WhatsApp restoran belum terkonfigurasi pada sistem.</p>
+                <button type="button" id="confirm-send-order-btn" class="btn btn-success btn-send-order">🚀 Konfirmasi & Kirim Pesanan ke Dapur</button>
               </div>
             </div>
           </div>
@@ -559,6 +618,8 @@
           <li><a href="#katalog">Katalog Pesanan</a></li>
           <li><a href="#ulasan">Ulasan Tamu Google Maps</a></li>
           <li><a href="#pesan">Reservasi & Order</a></li>
+          <li><a href="kasir.html">💻 Kasir POS (Staff)</a></li>
+          <li><a href="dapur.html">🍳 Layar Dapur & Kasir</a></li>
           <li><a href="#kontak">Hubungi Kami</a></li>
         </ul>
       </div>
@@ -616,6 +677,55 @@
     </div>
   </div>
 
+  <!-- Modal Dialog Sukses Kirim Pesanan ke Dapur Firestore -->
+  <div id="order-success-modal" class="order-success-modal" role="dialog" aria-modal="true" aria-labelledby="success-modal-title" hidden>
+    <div class="order-success-backdrop" id="success-modal-backdrop"></div>
+    <div class="order-success-box">
+      <div class="order-success-icon" aria-hidden="true">🎉</div>
+      <h3 id="success-modal-title" class="order-success-title">Pesanan Berhasil Dikirim ke Dapur!</h3>
+      <p class="order-success-desc">
+        Pesanan Anda telah diterima oleh sistem kasir & dapur Saung H. Amir dan sedang dipersiapkan oleh koki kami.
+      </p>
+
+      <div class="order-success-card">
+        <div class="order-success-row">
+          <span class="order-success-label">Nomor Meja / Layanan:</span>
+          <strong id="success-table-number" class="order-success-value">-</strong>
+        </div>
+        <div class="order-success-row" id="success-addon-row" style="display: none;">
+          <span class="order-success-label">Jenis Pesanan:</span>
+          <span id="success-addon-badge" class="badge-addon-status" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:4px; font-weight:bold;">⚠️ Pesanan Tambahan (Add-on)</span>
+        </div>
+        <div class="order-success-row" id="success-ojol-row" style="display: none;">
+          <span class="order-success-label">Kode Referensi Ojol:</span>
+          <strong id="success-ojol-ref" class="order-success-value">-</strong>
+        </div>
+        <div class="order-success-row">
+          <span class="order-success-label">Status Dapur:</span>
+          <span class="badge-kitchen-status">baru (menunggu dimasak)</span>
+        </div>
+        <div class="order-success-row">
+          <span class="order-success-label">Status Pembayaran:</span>
+          <span class="badge-payment-status">belum_lunas</span>
+        </div>
+        <div class="order-success-row">
+          <span class="order-success-label">Total Pesanan:</span>
+          <strong id="success-total-price" class="order-success-total">Rp 0</strong>
+        </div>
+        <div class="order-success-row">
+          <span class="order-success-label">ID Pesanan Firestore:</span>
+          <code id="success-order-id" class="order-id-badge">-</code>
+        </div>
+      </div>
+
+      <div class="order-success-actions">
+        <button type="button" id="close-success-modal-btn" class="btn btn-primary btn-block btn-lg">
+          OK, Tutup & Buat Pesanan Baru
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating Shortcut Bar: Reservasi & Order Cepat (Mudah Diakses di Semua Halaman) -->
   <aside id="floating-order-bar" class="floating-order-bar" aria-label="Akses Cepat Keranjang dan Formulir Reservasi">
     <div class="floating-order-inner">
@@ -635,13 +745,8 @@
     </div>
   </aside>
 
-  <!-- Modul JavaScript Terstruktur (Dukungan Universal Browser & file://) -->
-  <script src="js/config.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/cart.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/checkout.js"></script>
-  <script src="js/app.js"></script>
+  <!-- Script Tunggal ES Module Sesuai Spesifikasi -->
+  <script type="module" src="js/app.js"></script>
 
 </body>
 </html>

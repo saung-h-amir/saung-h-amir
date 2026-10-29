@@ -1,21 +1,329 @@
-(function (global) {
-  'use strict';
+import { menuData, MAIN_TABS, CATEGORIES } from './data.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  where,
+  updateDoc,
+  doc,
+  writeBatch,
+  serverTimestamp,
+  getDocs,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 
-  function initApp() {
-    const MAIN_TABS = global.MAIN_TABS || [];
-    const CATEGORIES = global.CATEGORIES || [];
-    const PRODUCTS = global.PRODUCTS || [];
-    const formatRupiah = global.formatRupiah || ((n) => 'Rp ' + Number(n).toLocaleString('id-ID'));
-    const addOrIncrementItem = global.addOrIncrementItem;
-    const updateItemQuantity = global.updateItemQuantity;
-    const removeItem = global.removeItem;
-    const calculateCartSummary = global.calculateCartSummary;
-    const validateReservationDate = global.validateReservationDate;
-    const loadCartDraft = global.loadCartDraft;
-    const saveCartDraft = global.saveCartDraft;
-    const validateCheckoutForm = global.validateCheckoutForm;
-    const buildWhatsappUrl = global.buildWhatsappUrl;
-    const isBusinessWhatsappConfigured = global.isBusinessWhatsappConfigured;
+const firebaseConfig = {
+  apiKey: "AIzaSyC41kOQ68sy1zLQKvE2bVRjTFwEw6JLVVY",
+  authDomain: "saung-h-amir.firebaseapp.com",
+  projectId: "saung-h-amir",
+  storageBucket: "saung-h-amir.firebasestorage.app",
+  messagingSenderId: "183459251916",
+  appId: "1:183459251916:web:825d1700d325aacc052469",
+  measurementId: "G-ZED8VN1HR9"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const PRODUCTS = menuData;
+
+// Format Rupiah
+const currencyFormatter = new Intl.NumberFormat('id-ID', {
+  style: 'currency',
+  currency: 'IDR',
+  maximumFractionDigits: 0
+});
+function formatRupiah(amount) {
+  return currencyFormatter.format(amount || 0);
+}
+
+function isValidQuantity(value) {
+  const num = Number(value);
+  return Number.isInteger(num) && num >= 1 && num <= 99;
+}
+
+function parseDateParts(dateStr) {
+  if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    utcDate.getUTCFullYear() !== year ||
+    utcDate.getUTCMonth() !== month - 1 ||
+    utcDate.getUTCDate() !== day
+  ) return null;
+  return { year, month, day, utcTime: utcDate.getTime() };
+}
+
+function getTodayUtcTime() {
+  const now = new Date();
+  return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function validateReservationDate(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string' || !dateStr.trim()) {
+    return { valid: false, message: 'Pilih tanggal kedatangan/pengambilan.' };
+  }
+  const parts = dateStr.trim().split('-');
+  if (parts.length !== 3) {
+    return { valid: false, message: 'Format tanggal tidak valid.' };
+  }
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    return { valid: false, message: 'Format tanggal tidak valid.' };
+  }
+
+  const selectedDate = new Date(year, month, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (selectedDate < today) {
+    return { valid: false, message: 'Tanggal reservasi tidak boleh sebelum hari ini.' };
+  }
+  return { valid: true, message: '' };
+}
+
+function addOrIncrementItem(items, productId, incrementBy = 1, option = '', customPrice = null) {
+  const optClean = (option || '').trim();
+  const existingIndex = (items || []).findIndex(
+    (item) => item.productId === productId && (item.option || '').trim() === optClean
+  );
+  if (existingIndex === -1) {
+    const qty = Math.min(99, Math.max(1, incrementBy));
+    const newItem = { productId, quantity: qty, option: optClean };
+    if (typeof customPrice === 'number' && customPrice > 0) newItem.customPrice = customPrice;
+    return [...(items || []), newItem];
+  }
+  return items.map((item, idx) => {
+    if (idx !== existingIndex) return item;
+    return { ...item, quantity: Math.min(99, item.quantity + incrementBy) };
+  });
+}
+
+function updateItemQuantity(items, productId, nextQuantity, option = '') {
+  if (!isValidQuantity(nextQuantity)) return { valid: false, items };
+  const optClean = (option || '').trim();
+  const qty = Number(nextQuantity);
+  return {
+    valid: true,
+    items: (items || []).map((item) =>
+      item.productId === productId && (item.option || '').trim() === optClean
+        ? { ...item, quantity: qty }
+        : item
+    )
+  };
+}
+
+function removeItem(items, productId, option = '') {
+  const optClean = (option || '').trim();
+  return (items || []).filter(
+    (item) => !(item.productId === productId && (item.option || '').trim() === optClean)
+  );
+}
+
+function calculateCartSummary(items, catalog, reservationDate, isOjol = false) {
+  const dateCheck = validateReservationDate(reservationDate);
+  const catalogMap = new Map((catalog || []).map((product) => [product.id, product]));
+  const detailedItems = [];
+  let totalUnits = 0;
+  let totalPrice = 0;
+  const markupMultiplier = isOjol ? 1.2 : 1.0;
+
+  for (const item of (items || [])) {
+    const product = catalogMap.get(item.productId);
+    if (!product || !isValidQuantity(item.quantity)) continue;
+
+    const basePrice =
+      typeof item.customPrice === 'number' && item.customPrice > 0
+        ? item.customPrice
+        : (product.dailyPrice || product.price);
+
+    const unitPrice = isOjol ? Math.round(basePrice * markupMultiplier) : basePrice;
+    const subtotal = unitPrice * item.quantity;
+    totalUnits += item.quantity;
+    totalPrice += subtotal;
+
+    detailedItems.push({
+      productId: product.id,
+      name: product.name,
+      specification: product.specification,
+      option: (item.option || '').trim(),
+      basePrice: basePrice,
+      unitPrice: unitPrice,
+      customPrice: item.customPrice || null,
+      quantity: item.quantity,
+      subtotal
+    });
+  }
+
+  return {
+    items: detailedItems,
+    totalUnits,
+    totalPrice: dateCheck.valid ? totalPrice : 0,
+    rawTotalPrice: totalPrice,
+    dateValid: dateCheck.valid,
+    dateMessage: dateCheck.message,
+    isOjol: Boolean(isOjol)
+  };
+}
+
+const STORAGE_KEY = 'saung-h-amir:cart:v1';
+const SCHEMA_VERSION = 1;
+
+function loadCartDraft(catalog) {
+  const defaultState = {
+    items: [],
+    reservationDate: '',
+    serviceType: 'dine-in',
+    reservationTime: '12:00',
+    needHandGlove: false,
+    takeawayMethod: 'self-pickup',
+    tableNumber: '',
+    isOjol: false,
+    ojolRefCode: '',
+    storageAvailable: true,
+    expiredDateCleared: false
+  };
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState;
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.schemaVersion !== SCHEMA_VERSION) return defaultState;
+    return {
+      ...defaultState,
+      items: Array.isArray(parsed.items) ? parsed.items : [],
+      reservationDate: parsed.reservationDate || '',
+      serviceType: parsed.serviceType || 'dine-in',
+      reservationTime: parsed.reservationTime || '12:00',
+      needHandGlove: Boolean(parsed.needHandGlove),
+      takeawayMethod: parsed.takeawayMethod || 'self-pickup',
+      tableNumber: parsed.tableNumber || '',
+      isOjol: Boolean(parsed.isOjol),
+      ojolRefCode: parsed.ojolRefCode || ''
+    };
+  } catch (e) {
+    return defaultState;
+  }
+}
+
+function saveCartDraft(items, reservationDate, serviceType, reservationTime, needHandGlove, takeawayMethod, tableNumber, isOjol, ojolRefCode) {
+  try {
+    const payload = {
+      schemaVersion: SCHEMA_VERSION,
+      updatedAt: new Date().toISOString(),
+      items: items || [],
+      reservationDate: reservationDate || '',
+      serviceType: serviceType || 'dine-in',
+      reservationTime: reservationTime || '12:00',
+      needHandGlove: Boolean(needHandGlove),
+      takeawayMethod: takeawayMethod || 'self-pickup',
+      tableNumber: tableNumber || '',
+      isOjol: Boolean(isOjol),
+      ojolRefCode: ojolRefCode || ''
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function checkIsAddonOrder(nomorMeja) {
+  if (!nomorMeja || nomorMeja === 'Take-Away' || nomorMeja === 'Take-Away (Bungkus)') return false;
+  try {
+    const q = query(
+      collection(db, 'orders'),
+      where('nomorMeja', '==', nomorMeja),
+      where('paymentStatus', '==', 'belum_lunas')
+    );
+    const snap = await getDocs(q);
+    return !snap.empty;
+  } catch (err) {
+    console.warn('Gagal periksa status addon meja di Firestore:', err);
+    return false;
+  }
+}
+
+async function sendOrderToFirestore(orderPayload) {
+  let isAddon = false;
+  if (orderPayload.orderType !== 'take_away') {
+    isAddon = await checkIsAddonOrder(orderPayload.nomorMeja);
+  }
+  const payload = {
+    ...orderPayload,
+    isAddon: isAddon,
+    createdAt: serverTimestamp()
+  };
+  const docRef = await addDoc(collection(db, 'orders'), payload);
+  return {
+    success: true,
+    orderId: docRef.id,
+    isAddon: isAddon,
+    data: payload
+  };
+}
+
+function validateCheckoutForm(formData) {
+  const errors = {};
+  const isOjolActive = Boolean(formData && formData.isOjol);
+  const trimmedTable = ((formData && formData.tableNumber) || '').trim();
+  const trimmedRefCode = ((formData && formData.ojolRefCode) || '').trim();
+  let trimmedName = ((formData && formData.customerName) || '').trim();
+  const trimmedGroup = ((formData && formData.groupName) || '').trim();
+  const trimmedNotes = ((formData && formData.notes) || '').trim();
+  const trimmedGuest = ((formData && formData.guestCount) || '').trim();
+  const rawPhone = ((formData && formData.phone) || '').trim().replace(/[\s\-()]/g, '');
+  const normalizedPhone = rawPhone.startsWith('+') ? rawPhone.slice(1) : rawPhone;
+  const selectedService =
+    trimmedTable === 'Take-Away (Bungkus)' || trimmedTable === 'Take-Away' || isOjolActive
+      ? 'take-away'
+      : (formData && formData.serviceType === 'take-away' ? 'take-away' : 'dine-in');
+  const trimmedTime = ((formData && formData.reservationTime) || '12:00').trim();
+  const isHandGloveNeeded = Boolean(formData && formData.needHandGlove);
+  const selectedTakeawayMethod = formData && formData.takeawayMethod === 'gosend' ? 'gosend' : 'self-pickup';
+
+  if (!trimmedTable) {
+    errors.tableNumber = 'Pilih nomor meja (Meja 1–15) atau Take-Away.';
+  }
+
+  if (isOjolActive) {
+    if (!trimmedRefCode) {
+      errors.ojolRefCode = 'Masukkan Kode Referensi Pesanan (contoh: GF-1234 atau 4 digit).';
+    }
+    if (!trimmedName) {
+      trimmedName = `Driver Ojol (${trimmedRefCode || 'GoFood'})`;
+    }
+  } else {
+    if (trimmedName.length < 2) {
+      errors.customerName = 'Nama pemesan minimal 2 karakter.';
+    }
+  }
+
+  return {
+    valid: Object.keys(errors).length === 0,
+    errors,
+    sanitized: {
+      tableNumber: trimmedTable || (isOjolActive ? 'Take-Away' : 'Meja 1'),
+      isOjol: isOjolActive,
+      ojolRefCode: trimmedRefCode,
+      customerName: trimmedName || (isOjolActive ? 'Driver Ojol' : 'Pelanggan Meja'),
+      groupName: trimmedGroup || '-',
+      phone: normalizedPhone || '-',
+      serviceType: selectedService,
+      serviceLabel: selectedService === 'dine-in' ? `Makan di Tempat (${trimmedTable})` : 'Take-Away (Bungkus)',
+      reservationTime: trimmedTime || '12:00',
+      guestCount: trimmedGuest || '-',
+      notes: trimmedNotes || '-',
+      needHandGlove: isHandGloveNeeded,
+      takeawayMethod: selectedTakeawayMethod
+    }
+  };
+}
+
+function initApp() {
 
     const state = {
       activeTab: 'makanan', // 'makanan' | 'berlima' | 'minuman' | 'sambal'
@@ -27,6 +335,9 @@
       reservationTime: '12:00',
       needHandGlove: false,
       takeawayMethod: 'self-pickup', // 'self-pickup' | 'gosend'
+      tableNumber: '',
+      isOjol: false,
+      ojolRefCode: '',
       isReviewed: false,
       storageWarning: false,
       productSugarSelection: {} // map of productId -> 'Normal Sugar' | 'Less Sugar'
@@ -62,15 +373,24 @@
       estimatedTotal: document.getElementById('estimated-total'),
       statusBanner: document.getElementById('status-banner'),
       checkoutForm: document.getElementById('checkout-form'),
+      tableNumberSelect: document.getElementById('table-number'),
+      tableError: document.getElementById('table-error'),
+      ojolModeToggle: document.getElementById('ojol-mode-toggle'),
+      ojolRefGroup: document.getElementById('ojol-ref-group'),
+      ojolRefCodeInput: document.getElementById('ojol-ref-code'),
+      ojolRefError: document.getElementById('ojol-ref-error'),
       customerNameInput: document.getElementById('customer-name'),
       nameError: document.getElementById('name-error'),
       groupNameInput: document.getElementById('group-name'),
       phoneInput: document.getElementById('customer-phone'),
       phoneError: document.getElementById('phone-error'),
       notesInput: document.getElementById('customer-notes'),
+      submitOrderBtn: document.getElementById('submit-order-btn'),
+      submitBtnText: document.getElementById('submit-btn-text'),
       reviewPanel: document.getElementById('review-panel'),
       reviewDetails: document.getElementById('review-details'),
       editOrderBtn: document.getElementById('edit-order-btn'),
+      confirmSendOrderBtn: document.getElementById('confirm-send-order-btn'),
       whatsappLink: document.getElementById('whatsapp-link'),
       configWarning: document.getElementById('config-warning'),
       floatingOrderBar: document.getElementById('floating-order-bar'),
@@ -90,7 +410,17 @@
       modalProductDesc: document.getElementById('modal-product-desc'),
       modalProductOptions: document.getElementById('modal-product-options'),
       modalProductPrice: document.getElementById('modal-product-price'),
-      modalAddBtn: document.getElementById('modal-add-btn')
+      modalAddBtn: document.getElementById('modal-add-btn'),
+      // Success Modal Elements
+      orderSuccessModal: document.getElementById('order-success-modal'),
+      successModalBackdrop: document.getElementById('success-modal-backdrop'),
+      closeSuccessModalBtn: document.getElementById('close-success-modal-btn'),
+      successTableNumber: document.getElementById('success-table-number'),
+      successAddonRow: document.getElementById('success-addon-row'),
+      successOjolRow: document.getElementById('success-ojol-row'),
+      successOjolRef: document.getElementById('success-ojol-ref'),
+      successTotalPrice: document.getElementById('success-total-price'),
+      successOrderId: document.getElementById('success-order-id')
     };
 
     let currentModalProduct = null;
@@ -118,7 +448,10 @@
           state.serviceType,
           state.reservationTime,
           state.needHandGlove,
-          state.takeawayMethod
+          state.takeawayMethod,
+          state.tableNumber,
+          state.isOjol,
+          state.ojolRefCode
         );
         if (!ok && !state.storageWarning) {
           state.storageWarning = true;
@@ -291,7 +624,7 @@
       modalSelectedSugar = 'Normal Sugar';
       modalPackageState = null;
 
-      let modalPrice = product.dailyPrice;
+      let modalPrice = state.isOjol ? Math.round(product.dailyPrice * 1.2) : product.dailyPrice;
 
       // Sugar Selector if applicable
       if (product.hasSugarOption) {
@@ -468,9 +801,10 @@
         selNasi.addEventListener('change', () => {
           modalPackageState.nasi = selNasi.value;
           modalPackageState.isLiwet = selNasi.value === 'Nasi Liwet Bakul';
-          const currentPrice = modalPackageState.isLiwet
+          const baseCurrentPrice = modalPackageState.isLiwet
             ? product.dailyPrice + (product.packageConfig.nasiUpgradePrice || 10000)
             : product.dailyPrice;
+          const currentPrice = state.isOjol ? Math.round(baseCurrentPrice * 1.2) : baseCurrentPrice;
           elements.modalProductPrice.textContent = formatRupiah(currentPrice);
         });
 
@@ -652,7 +986,8 @@
 
         const price = document.createElement('strong');
         price.className = 'product-price';
-        price.textContent = `${formatRupiah(product.dailyPrice)}`;
+        const cardDisplayPrice = state.isOjol ? Math.round(product.dailyPrice * 1.2) : product.dailyPrice;
+        price.textContent = `${formatRupiah(cardDisplayPrice)}`;
 
         if (product.hasPackageCustomization && product.packageConfig) {
           const customizerBox = document.createElement('div');
@@ -776,7 +1111,8 @@
             const currentPrice = packageState.isLiwet
               ? product.dailyPrice + (product.packageConfig.nasiUpgradePrice || 10000)
               : product.dailyPrice;
-            price.textContent = `${formatRupiah(currentPrice)}`;
+            const displayPrice = state.isOjol ? Math.round(currentPrice * 1.2) : currentPrice;
+            price.textContent = `${formatRupiah(displayPrice)}`;
           });
 
           grpNasi.append(lblNasi, selNasi);
@@ -857,7 +1193,12 @@
 
     function renderCart() {
       if (!elements.cartItemsContainer || !elements.cartJumpCount) return;
-      const summary = calculateCartSummary(state.items, PRODUCTS, state.reservationDate);
+      const summary = calculateCartSummary(
+        state.items,
+        PRODUCTS,
+        state.reservationDate,
+        state.isOjol
+      );
       elements.cartJumpCount.textContent = String(summary.totalUnits);
       elements.cartItemsContainer.textContent = '';
 
@@ -1045,6 +1386,124 @@
       }
     }
 
+    async function processAndSendOrder(summary, sanitizedContact) {
+      if (!summary || summary.items.length === 0) {
+        announceStatus('Keranjang pesanan masih kosong. Pilih minimal 1 menu terlebih dahulu.');
+        return;
+      }
+
+      // Tampilkan indikator loading pada tombol Kirim Pesanan
+      if (elements.submitOrderBtn) {
+        elements.submitOrderBtn.disabled = true;
+      }
+      if (elements.submitBtnText) {
+        elements.submitBtnText.textContent = 'Mengirim ke Dapur...';
+      }
+      if (elements.confirmSendOrderBtn) {
+        elements.confirmSendOrderBtn.disabled = true;
+        elements.confirmSendOrderBtn.textContent = '⏳ Mengirim ke Dapur...';
+      }
+
+      try {
+        const tableClean = String(sanitizedContact.tableNumber || (sanitizedContact.isOjol ? 'Take-Away' : 'Meja 1')).trim();
+        const isTakeAway = tableClean.toLowerCase().includes('take-away') || Boolean(sanitizedContact.isOjol);
+        const orderType = isTakeAway ? 'take_away' : 'dine_in';
+        const isOjol = Boolean(sanitizedContact.isOjol);
+        const kodeOjol = isOjol ? String(sanitizedContact.ojolRefCode || '') : '';
+
+        const formattedItems = summary.items.map((i) => ({
+          id: String(i.productId || 'menu-item'),
+          name: String(i.name || 'Menu'),
+          qty: Number(i.quantity || 1),
+          price: Number(i.unitPrice || 0),
+          subtotal: Number(i.subtotal || (i.quantity * i.unitPrice)),
+          note: String(i.option || '').trim()
+        }));
+
+        const orderPayload = {
+          nomorMeja: tableClean,
+          orderType: orderType,
+          isOjol: isOjol,
+          kodeOjol: kodeOjol,
+          items: formattedItems,
+          totalHarga: Number(summary.totalPrice),
+          kitchenStatus: 'baru',
+          paymentStatus: 'belum_lunas',
+          paymentMethod: '',
+          customerName: sanitizedContact.customerName || '',
+          phone: sanitizedContact.phone || '',
+          notes: sanitizedContact.notes || '',
+          serviceType: sanitizedContact.serviceType,
+          reservationDate: state.reservationDate,
+          reservationTime: sanitizedContact.reservationTime || ''
+        };
+
+        const result = await sendOrderToFirestore(orderPayload);
+
+        // Tampilkan Modal Notifikasi Sukses
+        if (elements.orderSuccessModal) {
+          if (elements.successTableNumber) {
+            elements.successTableNumber.textContent = orderPayload.nomorMeja;
+          }
+          if (elements.successAddonRow) {
+            elements.successAddonRow.style.display = result.isAddon ? 'flex' : 'none';
+          }
+          if (elements.successOjolRow && elements.successOjolRef) {
+            if (orderPayload.isOjol) {
+              elements.successOjolRow.style.display = 'flex';
+              elements.successOjolRef.textContent = orderPayload.kodeOjol || orderPayload.kodeReferensi || '-';
+            } else {
+              elements.successOjolRow.style.display = 'none';
+            }
+          }
+          if (elements.successTotalPrice) {
+            elements.successTotalPrice.textContent = formatRupiah(orderPayload.totalHarga);
+          }
+          if (elements.successOrderId) {
+            elements.successOrderId.textContent = result.orderId || ('ORD-' + Date.now());
+          }
+
+          elements.orderSuccessModal.hidden = false;
+          document.body.classList.add('modal-open');
+        }
+
+        // Reset keranjang belanja & form draf
+        state.items = [];
+        state.isReviewed = false;
+        if (elements.reviewPanel) elements.reviewPanel.hidden = true;
+        persistState();
+        renderCart();
+        renderCatalog();
+
+        announceStatus('Pesanan berhasil dikirim ke dapur!');
+      } catch (err) {
+        console.error('Error pengiriman pesanan ke Firestore:', err);
+        announceStatus('Gagal mengirim pesanan ke dapur: ' + (err.message || 'Kesalahan sistem'));
+        alert('Gagal mengirim pesanan ke dapur. Pastikan perangkat Anda terhubung dengan internet dan coba lagi.');
+      } finally {
+        if (elements.submitOrderBtn) {
+          elements.submitOrderBtn.disabled = false;
+        }
+        if (elements.submitBtnText) {
+          elements.submitBtnText.textContent = 'Kirim Pesanan';
+        }
+        if (elements.confirmSendOrderBtn) {
+          elements.confirmSendOrderBtn.disabled = false;
+          elements.confirmSendOrderBtn.textContent = '🚀 Konfirmasi & Kirim Pesanan ke Dapur';
+        }
+      }
+    }
+
+    function closeSuccessModal() {
+      if (!elements.orderSuccessModal) return;
+      elements.orderSuccessModal.hidden = true;
+      document.body.classList.remove('modal-open');
+      const catalogSection = document.getElementById('katalog');
+      if (catalogSection) {
+        catalogSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
     function renderReviewSummary(summary, sanitizedContact) {
       if (!elements.reviewDetails) return;
       elements.reviewDetails.textContent = '';
@@ -1053,13 +1512,21 @@
       list.className = 'review-list';
 
       const entries = [
+        ['Nomor Meja / Layanan', sanitizedContact.tableNumber],
+        sanitizedContact.isOjol
+          ? ['Mode Ojol', `Aktif (Markup +20%) - Ref: ${sanitizedContact.ojolRefCode}`]
+          : null,
         ['Tipe Layanan', sanitizedContact.serviceLabel],
         ['Nama Pemesan', sanitizedContact.customerName],
-        ['Instansi / Rombongan', sanitizedContact.groupName],
-        ['Nomor WhatsApp', sanitizedContact.phone],
+        sanitizedContact.groupName && sanitizedContact.groupName !== '-'
+          ? ['Instansi / Rombongan', sanitizedContact.groupName]
+          : null,
+        sanitizedContact.phone && sanitizedContact.phone !== '-'
+          ? ['Nomor WhatsApp / HP', sanitizedContact.phone]
+          : null,
         ['Tanggal Pesanan', state.reservationDate],
         ['Jam Kedatangan / Ambil', `${sanitizedContact.reservationTime} WIB`],
-        sanitizedContact.serviceType === 'dine-in'
+        sanitizedContact.serviceType === 'dine-in' && sanitizedContact.guestCount !== '-'
           ? ['Konfirmasi Jumlah Orang', `${sanitizedContact.guestCount} Orang`]
           : null,
         sanitizedContact.serviceType === 'take-away'
@@ -1071,11 +1538,13 @@
         [
           'Rincian Menu',
           summary.items
-            .map((i) => `${i.name}${i.option ? ` [${i.option}]` : ''} (${i.quantity}x)`)
+            .map((i) => `${i.name}${i.option ? ` [${i.option}]` : ''} (${i.quantity}x @ ${formatRupiah(i.unitPrice)})`)
             .join(', ')
         ],
         ['Total Estimasi Biaya', formatRupiah(summary.totalPrice)],
-        ['Catatan Khusus', sanitizedContact.notes]
+        sanitizedContact.notes && sanitizedContact.notes !== '-'
+          ? ['Catatan Khusus', sanitizedContact.notes]
+          : null
       ].filter(Boolean);
 
       entries.forEach(([term, desc]) => {
@@ -1088,16 +1557,10 @@
 
       elements.reviewDetails.appendChild(list);
 
-      if (isBusinessWhatsappConfigured && isBusinessWhatsappConfigured()) {
-        const url = buildWhatsappUrl(summary, sanitizedContact, state.reservationDate);
-        if (elements.whatsappLink) {
-          elements.whatsappLink.href = url;
-          elements.whatsappLink.hidden = false;
-        }
-        if (elements.configWarning) elements.configWarning.hidden = true;
-      } else {
-        if (elements.whatsappLink) elements.whatsappLink.hidden = true;
-        if (elements.configWarning) elements.configWarning.hidden = false;
+      if (elements.confirmSendOrderBtn) {
+        elements.confirmSendOrderBtn.onclick = () => {
+          processAndSendOrder(summary, sanitizedContact);
+        };
       }
 
       if (elements.reviewPanel) elements.reviewPanel.hidden = false;
@@ -1122,10 +1585,86 @@
         });
       }
 
+      if (elements.tableNumberSelect) {
+        elements.tableNumberSelect.addEventListener('change', () => {
+          state.tableNumber = elements.tableNumberSelect.value;
+          setFieldError(elements.tableNumberSelect, elements.tableError, '');
+
+          if (state.tableNumber === 'Take-Away (Bungkus)') {
+            state.serviceType = 'take-away';
+            if (elements.serviceTypeTakeAway) elements.serviceTypeTakeAway.checked = true;
+          } else {
+            state.serviceType = 'dine-in';
+            if (elements.serviceTypeDineIn) elements.serviceTypeDineIn.checked = true;
+          }
+
+          updateServiceTypeUI();
+          invalidateReview();
+          persistState();
+        });
+      }
+
+      if (elements.ojolModeToggle) {
+        elements.ojolModeToggle.addEventListener('change', () => {
+          state.isOjol = elements.ojolModeToggle.checked;
+
+          if (state.isOjol) {
+            if (elements.ojolRefGroup) elements.ojolRefGroup.style.display = 'block';
+            state.serviceType = 'take-away';
+            if (elements.serviceTypeTakeAway) elements.serviceTypeTakeAway.checked = true;
+            if (elements.tableNumberSelect) {
+              elements.tableNumberSelect.value = 'Take-Away (Bungkus)';
+              state.tableNumber = 'Take-Away (Bungkus)';
+              setFieldError(elements.tableNumberSelect, elements.tableError, '');
+            }
+            announceStatus('Mode Ojol aktif. Markup komisi +20% diterapkan ke semua harga.');
+          } else {
+            if (elements.ojolRefGroup) elements.ojolRefGroup.style.display = 'none';
+            if (elements.ojolRefCodeInput) elements.ojolRefCodeInput.value = '';
+            state.ojolRefCode = '';
+            setFieldError(elements.ojolRefCodeInput, elements.ojolRefError, '');
+            announceStatus('Mode Ojol dinonaktifkan. Harga normal Saung H. Amir kembali diterapkan.');
+          }
+
+          updateServiceTypeUI();
+          renderCatalog();
+          renderCart();
+          invalidateReview();
+          persistState();
+        });
+      }
+
+      if (elements.ojolRefCodeInput) {
+        elements.ojolRefCodeInput.addEventListener('input', () => {
+          state.ojolRefCode = elements.ojolRefCodeInput.value;
+          setFieldError(elements.ojolRefCodeInput, elements.ojolRefError, '');
+          invalidateReview();
+          persistState();
+        });
+      }
+
+      if (elements.closeSuccessModalBtn) {
+        elements.closeSuccessModalBtn.addEventListener('click', closeSuccessModal);
+      }
+      if (elements.successModalBackdrop) {
+        elements.successModalBackdrop.addEventListener('click', closeSuccessModal);
+      }
+
       if (elements.serviceTypeDineIn) {
         elements.serviceTypeDineIn.addEventListener('change', () => {
           if (elements.serviceTypeDineIn.checked) {
             state.serviceType = 'dine-in';
+            if (elements.tableNumberSelect && elements.tableNumberSelect.value === 'Take-Away (Bungkus)') {
+              elements.tableNumberSelect.value = 'Meja 1';
+              state.tableNumber = 'Meja 1';
+            }
+            if (elements.ojolModeToggle && elements.ojolModeToggle.checked) {
+              elements.ojolModeToggle.checked = false;
+              state.isOjol = false;
+              if (elements.ojolRefGroup) elements.ojolRefGroup.style.display = 'none';
+              renderCatalog();
+              renderCart();
+            }
             updateServiceTypeUI();
             invalidateReview();
             persistState();
@@ -1137,6 +1676,11 @@
         elements.serviceTypeTakeAway.addEventListener('change', () => {
           if (elements.serviceTypeTakeAway.checked) {
             state.serviceType = 'take-away';
+            if (elements.tableNumberSelect) {
+              elements.tableNumberSelect.value = 'Take-Away (Bungkus)';
+              state.tableNumber = 'Take-Away (Bungkus)';
+              setFieldError(elements.tableNumberSelect, elements.tableError, '');
+            }
             updateServiceTypeUI();
             invalidateReview();
             persistState();
@@ -1187,9 +1731,10 @@
       }
 
       if (elements.reservationDateInput) {
-        elements.reservationDateInput.addEventListener('change', (e) => {
-          state.reservationDate = e.target.value;
-          const check = validateReservationDate(state.reservationDate);
+        const handleDateChange = (e) => {
+          const val = (e.target.value || '').trim();
+          state.reservationDate = val;
+          const check = validateReservationDate(val);
           setFieldError(
             elements.reservationDateInput,
             elements.dateError,
@@ -1198,7 +1743,10 @@
           invalidateReview();
           persistState();
           renderCart();
-        });
+        };
+
+        elements.reservationDateInput.addEventListener('change', handleDateChange);
+        elements.reservationDateInput.addEventListener('input', handleDateChange);
       }
 
       if (elements.reservationTimeInput) {
@@ -1277,11 +1825,23 @@
       if (elements.checkoutForm) {
         elements.checkoutForm.addEventListener('submit', (e) => {
           e.preventDefault();
-          const summary = calculateCartSummary(state.items, PRODUCTS, state.reservationDate);
+
+          // Pastikan nilai tanggal selalu sinkron dengan input
+          if (elements.reservationDateInput && elements.reservationDateInput.value) {
+            state.reservationDate = elements.reservationDateInput.value.trim();
+          }
+
+          const summary = calculateCartSummary(
+            state.items,
+            PRODUCTS,
+            state.reservationDate,
+            state.isOjol
+          );
 
           if (summary.items.length === 0) {
             announceStatus('Keranjang pesanan masih kosong. Pilih minimal 1 menu terlebih dahulu.');
             if (elements.searchInput) elements.searchInput.focus();
+            alert('Keranjang pesanan masih kosong. Silakan pilih minimal 1 menu terlebih dahulu.');
             return;
           }
 
@@ -1305,6 +1865,9 @@
               : 'self-pickup';
 
           const formValidation = validateCheckoutForm({
+            tableNumber: elements.tableNumberSelect ? elements.tableNumberSelect.value : state.tableNumber,
+            isOjol: state.isOjol,
+            ojolRefCode: elements.ojolRefCodeInput ? elements.ojolRefCodeInput.value : state.ojolRefCode,
             customerName: elements.customerNameInput ? elements.customerNameInput.value : '',
             groupName: elements.groupNameInput ? elements.groupNameInput.value : '',
             phone: elements.phoneInput ? elements.phoneInput.value : '',
@@ -1318,6 +1881,16 @@
             takeawayMethod: activeTakeawayMethod
           });
 
+          setFieldError(
+            elements.tableNumberSelect,
+            elements.tableError,
+            formValidation.errors.tableNumber || ''
+          );
+          setFieldError(
+            elements.ojolRefCodeInput,
+            elements.ojolRefError,
+            formValidation.errors.ojolRefCode || ''
+          );
           setFieldError(
             elements.customerNameInput,
             elements.nameError,
@@ -1340,14 +1913,22 @@
           );
 
           if (!dateCheck.valid) {
-            announceStatus(dateCheck.message);
-            if (elements.reservationDateInput) elements.reservationDateInput.focus();
+            announceStatus(dateCheck.message || 'Wajib memilih tanggal kedatangan/pengambilan!');
+            if (elements.reservationDateInput) {
+              elements.reservationDateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              elements.reservationDateInput.focus();
+            }
+            alert(dateCheck.message || 'Wajib memilih Tanggal Kedatangan / Pengambilan sebelum meninjau pesanan!');
             return;
           }
 
           if (!formValidation.valid) {
-            announceStatus('Periksa kembali data pemesanan yang belum lengkap atau belum valid.');
-            if (formValidation.errors.customerName && elements.customerNameInput) {
+            announceStatus('Periksa kembali data formulir pemesanan yang belum lengkap atau belum valid.');
+            if (formValidation.errors.tableNumber && elements.tableNumberSelect) {
+              elements.tableNumberSelect.focus();
+            } else if (formValidation.errors.ojolRefCode && elements.ojolRefCodeInput) {
+              elements.ojolRefCodeInput.focus();
+            } else if (formValidation.errors.customerName && elements.customerNameInput) {
               elements.customerNameInput.focus();
             } else if (formValidation.errors.phone && elements.phoneInput) {
               elements.phoneInput.focus();
@@ -1359,20 +1940,31 @@
             return;
           }
 
+          // Tampilkan panel tinjauan pesanan untuk diperiksa sebelum dikirim ke dapur
           renderReviewSummary(summary, formValidation.sanitized);
-          announceStatus('Pesanan siap ditinjau. Klik tombol WhatsApp untuk mengirim pesanan.');
+          if (elements.reviewPanel) {
+            elements.reviewPanel.hidden = false;
+            elements.reviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          announceStatus('Rincian pesanan siap ditinjau. Silakan periksa dan konfirmasi.');
         });
       }
 
       if (elements.editOrderBtn) {
         elements.editOrderBtn.addEventListener('click', () => {
           invalidateReview();
+          if (elements.reviewPanel) elements.reviewPanel.hidden = true;
+          if (elements.checkoutForm) {
+            elements.checkoutForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
           if (elements.customerNameInput) elements.customerNameInput.focus();
-          announceStatus('Pesanan dapat diedit. Perbarui data atau keranjang, lalu tinjau kembali.');
+          announceStatus('Pesanan dapat diedit. Perbarui data formulir lalu klik Tinjau Pesanan.');
         });
       }
 
       [
+        elements.tableNumberSelect,
+        elements.ojolRefCodeInput,
         elements.customerNameInput,
         elements.groupNameInput,
         elements.phoneInput,
@@ -1384,7 +1976,7 @@
 
       // Floating Order Shortcut click
       if (elements.floatingOrderBar) {
-        elements.floatingOrderBar.addEventListener('click', (e) => {
+        elements.floatingOrderBar.addEventListener('click', () => {
           const orderSec = document.getElementById('pesan');
           if (orderSec) {
             orderSec.scrollIntoView({ behavior: 'smooth' });
@@ -1402,12 +1994,35 @@
       state.reservationTime = draft.reservationTime || '12:00';
       state.needHandGlove = Boolean(draft.needHandGlove);
       state.takeawayMethod = draft.takeawayMethod === 'gosend' ? 'gosend' : 'self-pickup';
+      state.tableNumber = draft.tableNumber || '';
+      state.isOjol = Boolean(draft.isOjol);
+      state.ojolRefCode = draft.ojolRefCode || '';
+
+      if (elements.tableNumberSelect && state.tableNumber) {
+        elements.tableNumberSelect.value = state.tableNumber;
+      }
+
+      if (elements.ojolModeToggle) {
+        elements.ojolModeToggle.checked = state.isOjol;
+        if (elements.ojolRefGroup) {
+          elements.ojolRefGroup.style.display = state.isOjol ? 'block' : 'none';
+        }
+      }
+
+      if (elements.ojolRefCodeInput && state.ojolRefCode) {
+        elements.ojolRefCodeInput.value = state.ojolRefCode;
+      }
 
       if (elements.reservationDateInput) {
-        const today = new Date().toISOString().split('T')[0];
-        elements.reservationDateInput.min = today;
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+        elements.reservationDateInput.min = todayStr;
         if (state.reservationDate) {
           elements.reservationDateInput.value = state.reservationDate;
+        } else {
+          state.reservationDate = todayStr;
+          elements.reservationDateInput.value = todayStr;
         }
       }
 
@@ -1437,31 +2052,33 @@
     }
 
     // Global Action Helpers
-    global.addSpecificItem = function (productId, option = '') {
-      state.items = addOrIncrementItem(state.items, productId, 1, option);
-      invalidateReview();
-      persistState();
-      renderCart();
-      const product = PRODUCTS.find((p) => p.id === productId);
-      const name = product ? product.name : productId;
-      announceStatus(`${name} telah ditambahkan ke keranjang pesanan.`);
-      const cartSection = document.getElementById('pesan');
-      if (cartSection) {
-        cartSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    };
+    if (typeof window !== 'undefined') {
+      window.addSpecificItem = function (productId, option = '') {
+        state.items = addOrIncrementItem(state.items, productId, 1, option);
+        invalidateReview();
+        persistState();
+        renderCart();
+        const product = PRODUCTS.find((p) => p.id === productId);
+        const name = product ? product.name : productId;
+        announceStatus(`${name} telah ditambahkan ke keranjang pesanan.`);
+        const cartSection = document.getElementById('pesan');
+        if (cartSection) {
+          cartSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      };
 
-    global.selectCatalogTab = function (tabId) {
-      state.activeTab = tabId;
-      state.selectedCategory = 'Semua';
-      renderTabs();
-      renderCategories();
-      renderCatalog();
-      const catalogSection = document.getElementById('katalog');
-      if (catalogSection) {
-        catalogSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    };
+      window.selectCatalogTab = function (tabId) {
+        state.activeTab = tabId;
+        state.selectedCategory = 'Semua';
+        renderTabs();
+        renderCategories();
+        renderCatalog();
+        const catalogSection = document.getElementById('katalog');
+        if (catalogSection) {
+          catalogSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      };
+    }
 
     renderTabs();
     renderCategories();
@@ -1476,4 +2093,3 @@
   } else {
     initApp();
   }
-})(typeof window !== 'undefined' ? window : globalThis);
