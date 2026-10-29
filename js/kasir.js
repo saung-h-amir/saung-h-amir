@@ -83,18 +83,23 @@ const dom = {
   pinForm: document.getElementById('pin-form'),
   pinError: document.getElementById('pin-error'),
   pinSubmitBtn: document.getElementById('pin-submit-btn'),
-  posLockBtn: document.getElementById('pos-lock-btn'),
-  liveClock: document.getElementById('pos-live-clock'),
 
-  // Tabs Nav
+  // Tabs Nav (HANYA 2 TAB UTAMA)
   tabBtnInput: document.getElementById('tab-btn-input'),
   tabBtnTagihan: document.getElementById('tab-btn-tagihan'),
-  tabBtnRekap: document.getElementById('tab-btn-rekap'),
   paneInput: document.getElementById('pane-input'),
   paneTagihan: document.getElementById('pane-tagihan'),
-  paneRekap: document.getElementById('pane-rekap'),
   badgeUnpaidTables: document.getElementById('badge-unpaid-tables'),
   badgeRekapTotal: document.getElementById('badge-rekap-total'),
+
+  // Tombol & Modal Rekap Pemasukan Layar Penuh
+  btnOpenRekapModal: document.getElementById('btn-open-rekap-modal'),
+  rekapModal: document.getElementById('rekap-modal'),
+  btnCloseRekapModal: document.getElementById('btn-close-rekap-modal'),
+
+  // Banner Peringatan Raksasa & Alarm Sirine
+  newOrderAlarmOverlay: document.getElementById('new-order-alarm-overlay'),
+  btnStopAlarm: document.getElementById('btn-stop-alarm'),
 
   // Tab 1: Input Pesanan
   searchInput: document.getElementById('pos-search'),
@@ -142,7 +147,7 @@ const dom = {
   cancelCashBtn: document.getElementById('cancel-cash-btn'),
   confirmCashBtn: document.getElementById('confirm-cash-btn'),
 
-  // Tab 3: Rekap
+  // Modal Rekap: Filter & KPIs
   rekapStartDate: document.getElementById('rekap-start-date'),
   rekapEndDate: document.getElementById('rekap-end-date'),
   btnApplyFilter: document.getElementById('btn-apply-filter'),
@@ -238,11 +243,11 @@ function showToast(message, type = '') {
 }
 
 /* --------------------------------------------------------------------------
-   2. Navigasi 3 Tab Utama Kasir POS
+   2. Navigasi 2 Tab Utama & Modal Rekap Kasir POS
    -------------------------------------------------------------------------- */
 function switchTab(tabId) {
   state.activeTab = tabId;
-  [dom.tabBtnInput, dom.tabBtnTagihan, dom.tabBtnRekap].forEach((btn) => {
+  [dom.tabBtnInput, dom.tabBtnTagihan].forEach((btn) => {
     if (btn) {
       const isActive = btn.getAttribute('data-tab') === tabId;
       btn.classList.toggle('active', isActive);
@@ -250,15 +255,29 @@ function switchTab(tabId) {
     }
   });
 
-  [dom.paneInput, dom.paneTagihan, dom.paneRekap].forEach((pane) => {
+  [dom.paneInput, dom.paneTagihan].forEach((pane) => {
     if (pane) {
       pane.classList.toggle('active', pane.id === tabId);
     }
   });
 }
 
+function openRekapModal() {
+  if (dom.rekapModal) {
+    dom.rekapModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeRekapModal() {
+  if (dom.rekapModal) {
+    dom.rekapModal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
 /* --------------------------------------------------------------------------
-   3. TAB 1: INPUT PESANAN (MENU GRID SUPER RAPAT - NAMA & HARGA SAJA)
+   3. TAB 1: INPUT PESANAN (MENU LIST VIEW 1 BARIS BESAR - A SAMPAI Z)
    -------------------------------------------------------------------------- */
 const categoriesList = POS_CATEGORIES;
 
@@ -287,7 +306,10 @@ function saveCustomMenuItems(items) {
 
 function getCatalog() {
   const custom = loadCustomMenuItems();
-  return [...menuData, ...custom];
+  const all = [...menuData, ...custom];
+  // Urutkan A - Z secara permanen
+  all.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
+  return all;
 }
 
 function renderCategories() {
@@ -336,6 +358,9 @@ function renderMenuGrid() {
     });
   }
 
+  // WAJIB URUT SECARA ALFABETIS A - Z
+  filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
+
   if (dom.ojolMenuCount) {
     dom.ojolMenuCount.textContent = state.isOjol
       ? `${filtered.length} Menu (Harga GoFood)`
@@ -346,15 +371,15 @@ function renderMenuGrid() {
 
   if (filtered.length === 0) {
     dom.menuGrid.innerHTML = `
-      <div style="grid-column: 1/-1; text-align: center; padding: 2rem 1rem; color: #94a3b8;">
-        <span style="font-size: 1.8rem; display: block; margin-bottom: 0.3rem;">🔍</span>
-        <p style="font-weight: 700; font-size: 0.9rem;">Menu tidak ditemukan</p>
+      <div style="text-align: center; padding: 2.5rem 1rem; color: #94a3b8; background: #ffffff; border-radius: 12px; border: 2px dashed #e2e8f0; width: 100%;">
+        <span style="font-size: 2.2rem; display: block; margin-bottom: 0.5rem;">🔍</span>
+        <p style="font-weight: 700; font-size: 1.1rem; color: #64748b;">Menu tidak ditemukan</p>
       </div>
     `;
     return;
   }
 
-  // SESUAI PERMINTAAN USER: HANYA NAMA MENU (TEBAL) & HARGA (HIJAU)
+  // SESUAI PERMINTAAN USER: TAMPILAN LIST VIEW 1 BARIS PENUH (100% WIDTH), SANGAT BESAR & JELAS RAMAH LANSIA
   filtered.forEach((item) => {
     const itemPrice = state.isOjol ? (item.goFoodPrice || Math.round(item.price * 1.2)) : item.price;
     const isCustom = Boolean(item.isCustom);
@@ -365,7 +390,10 @@ function renderMenuGrid() {
     btn.setAttribute('title', `Tambah ${item.name} (${formatRupiah(itemPrice)})${isCustom ? ' [Menu Kasir]' : ''}`);
 
     btn.innerHTML = `
-      <strong class="pos-menu-btn-name">${item.name}</strong>
+      <div class="pos-menu-btn-left">
+        <strong class="pos-menu-btn-name">${item.name}</strong>
+        ${isCustom ? '<span style="font-size: 0.78rem; background: #fef3c7; color: #b45309; padding: 3px 8px; border-radius: 6px; font-weight: 700; margin-left: 8px;">[Manual]</span>' : ''}
+      </div>
       <span class="pos-menu-btn-price">${formatRupiah(itemPrice)}</span>
     `;
 
@@ -589,7 +617,11 @@ async function sendOrderToFirestore() {
       createdAt: serverTimestamp()
     };
 
-    await addDoc(collection(db, 'orders'), payload);
+    const docRef = await addDoc(collection(db, 'orders'), payload);
+    if (docRef && docRef.id) {
+      selfCreatedOrderIds.add(docRef.id);
+      knownNewOrderIds.add(docRef.id);
+    }
 
     const successMsg = state.isOjol
       ? `Pesanan GoFood/Grab (${kodeOjol}) berhasil dikirim ke Dapur!`
@@ -1297,24 +1329,193 @@ function renderCustomMenuList() {
 }
 
 /* --------------------------------------------------------------------------
+   8. SISTEM ALARM SIRINE DARURAT & FLASH MERAH PESANAN BARU KASIR POS
+   -------------------------------------------------------------------------- */
+let audioCtx = null;
+let sirenInterval = null;
+let isEmergencyAlarmActive = false;
+let isKasirAlarmFirstLoad = true;
+let knownNewOrderIds = new Set();
+let selfCreatedOrderIds = new Set();
+
+function ensureAudioContext() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!audioCtx) audioCtx = new AudioContextClass();
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  } catch (e) {
+    // silent fallback
+  }
+}
+
+function playSirenCycle() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    if (!audioCtx) {
+      audioCtx = new AudioContextClass();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+
+    const now = audioCtx.currentTime;
+    const duration = 1.2; // 1.2 detik siklus ayunan melolong
+
+    // 1. Nada Sawtooth Melolong Naik-Turun (650Hz -> 1250Hz -> 650Hz)
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(650, now);
+    osc1.frequency.linearRampToValueAtTime(1250, now + (duration * 0.5));
+    osc1.frequency.linearRampToValueAtTime(650, now + duration);
+
+    gain1.gain.setValueAtTime(0.5, now);
+    gain1.gain.setValueAtTime(0.5, now + (duration * 0.9));
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+
+    // 2. Harmonik Square Wave Alarm Melengking (900Hz -> 1450Hz -> 900Hz)
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(900, now);
+    osc2.frequency.linearRampToValueAtTime(1450, now + (duration * 0.5));
+    osc2.frequency.linearRampToValueAtTime(900, now + duration);
+
+    gain2.gain.setValueAtTime(0.25, now);
+    gain2.gain.setValueAtTime(0.25, now + (duration * 0.9));
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+
+    osc1.start(now);
+    osc1.stop(now + duration);
+    osc2.start(now);
+    osc2.stop(now + duration);
+  } catch (err) {
+    console.warn('Gagal membunyikan sirine alarm pesanan kasir:', err);
+  }
+}
+
+function startEmergencyAlarm() {
+  if (isEmergencyAlarmActive) return;
+  isEmergencyAlarmActive = true;
+
+  // 1. Animasi Layar Berkedip Merah Terang di Seluruh Layar Kasir
+  document.body.classList.add('alarm-flash-active');
+
+  // 2. Munculkan Banner Raksasa di Tengah Layar
+  if (dom.newOrderAlarmOverlay) {
+    dom.newOrderAlarmOverlay.style.display = 'flex';
+  }
+
+  // 3. Putar Suara Sirine Kebakaran Keras & Berulang (Looping tanpa henti)
+  playSirenCycle();
+  if (sirenInterval) clearInterval(sirenInterval);
+  sirenInterval = setInterval(() => {
+    if (!isEmergencyAlarmActive) {
+      clearInterval(sirenInterval);
+      return;
+    }
+    playSirenCycle();
+  }, 1300);
+}
+
+function stopEmergencyAlarm() {
+  isEmergencyAlarmActive = false;
+  if (sirenInterval) {
+    clearInterval(sirenInterval);
+    sirenInterval = null;
+  }
+
+  // 1. Layar berhenti berkedip merah
+  document.body.classList.remove('alarm-flash-active');
+
+  // 2. Sembunyikan banner raksasa
+  if (dom.newOrderAlarmOverlay) {
+    dom.newOrderAlarmOverlay.style.display = 'none';
+  }
+
+  showToast('Alarm pesanan baru berhasil dimatikan.', 'info');
+}
+
+function setupNewOrderAlarmListener() {
+  const q = query(
+    collection(db, 'orders'),
+    where('kitchenStatus', '==', 'baru')
+  );
+
+  onSnapshot(q, (snapshot) => {
+    const currentIds = new Set();
+    snapshot.forEach((docSnap) => {
+      currentIds.add(docSnap.id);
+    });
+
+    if (!isKasirAlarmFirstLoad) {
+      let hasExternalNewOrder = false;
+      currentIds.forEach((id) => {
+        // Jika ada ID baru yang belum pernah dicatat dan bukan dibuat sendiri di kasir saat ini
+        if (!knownNewOrderIds.has(id)) {
+          if (!selfCreatedOrderIds.has(id)) {
+            hasExternalNewOrder = true;
+          }
+        }
+      });
+
+      if (hasExternalNewOrder) {
+        startEmergencyAlarm();
+      }
+    } else {
+      isKasirAlarmFirstLoad = false;
+    }
+
+    knownNewOrderIds = currentIds;
+  }, (err) => {
+    console.warn('Listener alarm pesanan baru kasir error:', err);
+  });
+}
+
+/* --------------------------------------------------------------------------
    9. Inisialisasi & Event Listeners
    -------------------------------------------------------------------------- */
 function init() {
   checkAuth();
-  startClock();
   renderCategories();
   renderMenuGrid();
   renderCart();
 
+  // Aktifkan Audio Context saat interaksi pertama
+  document.addEventListener('click', ensureAudioContext, { once: true });
+
   // Auth Events
   if (dom.pinForm) dom.pinForm.addEventListener('submit', handlePinSubmit);
   if (dom.pinSubmitBtn) dom.pinSubmitBtn.addEventListener('click', handlePinSubmit);
-  if (dom.posLockBtn) dom.posLockBtn.addEventListener('click', lockPOS);
 
-  // Tabs Nav Events
+  // Tabs Nav Events (Hanya 2 Tab Utama)
   if (dom.tabBtnInput) dom.tabBtnInput.addEventListener('click', () => switchTab('pane-input'));
   if (dom.tabBtnTagihan) dom.tabBtnTagihan.addEventListener('click', () => switchTab('pane-tagihan'));
-  if (dom.tabBtnRekap) dom.tabBtnRekap.addEventListener('click', () => switchTab('pane-rekap'));
+
+  // Header Rekap Modal Pop-up Events
+  if (dom.btnOpenRekapModal) dom.btnOpenRekapModal.addEventListener('click', openRekapModal);
+  if (dom.btnCloseRekapModal) dom.btnCloseRekapModal.addEventListener('click', closeRekapModal);
+  if (dom.rekapModal) {
+    dom.rekapModal.addEventListener('click', (e) => {
+      if (e.target === dom.rekapModal) closeRekapModal();
+    });
+  }
+
+  // Tombol Matikan Alarm Sirine Pesanan Baru
+  if (dom.btnStopAlarm) {
+    dom.btnStopAlarm.addEventListener('click', stopEmergencyAlarm);
+  }
 
   // Search Input Events
   if (dom.searchInput) {
@@ -1394,6 +1595,7 @@ function init() {
   // Listeners Firestore
   setupCashierBillsListener();
   setupDailyRecapListener();
+  setupNewOrderAlarmListener();
 }
 
 document.addEventListener('DOMContentLoaded', init);

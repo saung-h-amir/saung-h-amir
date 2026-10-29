@@ -34,45 +34,54 @@
     </div>
   </div>
 
-  <!-- Header POS Kasir -->
+  <!-- Banner Raksasa Peringatan Pesanan Baru (Alarm & Sirine) -->
+  <div id="new-order-alarm-overlay" class="alarm-overlay" style="display: none;">
+    <div class="alarm-modal">
+      <span class="alarm-icon">🚨</span>
+      <h1 class="alarm-title">ADA PESANAN BARU MASUK!</h1>
+      <p class="alarm-desc">Pesanan baru telah masuk ke sistem. Segera siapkan dan periksa pesanan.</p>
+      <button type="button" id="btn-stop-alarm" class="btn-stop-alarm">
+        <span>🔕 MATIKAN ALARM & SIRINE</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Header POS Kasir (Sederhana & Ramah Pengguna Lansia) -->
   <header class="pos-header">
     <div class="pos-brand">
       <img src="assets/images/logokecil.jpeg" alt="Logo Saung H. Amir" class="pos-brand-logo">
       <div class="pos-brand-text">
         <h1>Saung H. Amir</h1>
-        <span class="pos-brand-tag">POS & Kasir Tagihan</span>
+        <span class="pos-brand-tag">Kasir POS Terpadu</span>
       </div>
     </div>
 
-    <div class="pos-header-center">
-      <div id="pos-live-clock" class="pos-live-clock">--:--:-- WIB</div>
-    </div>
-
+    <!-- Tombol Pintas Header: Rekap Pemasukan Layar Penuh & Tautan Eksternal -->
     <div class="pos-header-actions">
+      <button type="button" id="btn-open-rekap-modal" class="pos-header-rekap-btn" title="Buka Rekap Pemasukan">
+        <span class="rekap-btn-icon">📊</span>
+        <span>Rekap Pemasukan</span>
+        <span id="badge-rekap-total" class="header-rekap-badge">Rp 0</span>
+      </button>
       <a href="dapur.html" class="pos-nav-link" target="_blank" rel="noopener" title="Buka Layar Antrean Dapur Koki">
-        <span>🍳 Layar Dapur</span>
+        <span>🍳 Dapur</span>
       </a>
       <a href="index.html" class="pos-nav-link" target="_blank" rel="noopener" title="Buka Web Pemesanan Pelanggan">
-        <span>🌐 Web Pelanggan</span>
+        <span>🌐 Web</span>
       </a>
-      <button type="button" id="pos-lock-btn" class="pos-lock-btn" title="Kunci Layar POS">
-        <span>🔒 Kunci</span>
-      </button>
     </div>
   </header>
 
-  <!-- Navigasi 3 Tab Kasir POS Utama -->
+  <!-- Navigasi Utama HANYA 2 Tab Besar (Input Pesanan & Tagihan Meja) -->
   <nav class="pos-tabs" role="tablist">
     <button type="button" class="pos-tab-btn active" id="tab-btn-input" data-tab="pane-input" role="tab" aria-selected="true">
-      <span>📝 Input Pesanan</span>
+      <span class="tab-icon">📝</span>
+      <span>1. Input Pesanan</span>
     </button>
     <button type="button" class="pos-tab-btn" id="tab-btn-tagihan" data-tab="pane-tagihan" role="tab" aria-selected="false">
-      <span>💳 Tagihan & Pembayaran</span>
+      <span class="tab-icon">💳</span>
+      <span>2. Tagihan & Pembayaran</span>
       <span id="badge-unpaid-tables" class="pos-tab-badge">0 Meja</span>
-    </button>
-    <button type="button" class="pos-tab-btn" id="tab-btn-rekap" data-tab="pane-rekap" role="tab" aria-selected="false">
-      <span>📊 Rekap Pemasukan</span>
-      <span id="badge-rekap-total" class="pos-tab-badge">Rp 0</span>
     </button>
   </nav>
 
@@ -223,98 +232,110 @@
   </section>
 
   <!-- ====================================================================
-       TAB 3: REKAP PEMASUKAN DENGAN FILTER RENTANG WAKTU (HARIAN / MINGGUAN)
+       MODAL LAYAR PENUH: REKAP PEMASUKAN DENGAN FILTER RENTANG WAKTU
        ==================================================================== -->
-  <section id="pane-rekap" class="pos-tab-pane">
-    <div class="pos-rekap-container">
-      
-      <!-- Filter Rentang Waktu (Harian / Mingguan / Kustom) -->
-      <div class="rekap-filter-card">
-        <div class="rekap-filter-header">
-          <strong style="font-size: 1rem; color: #0f172a;">📅 Filter Rentang Waktu Pemasukan:</strong>
-          <div class="rekap-presets">
-            <button type="button" class="btn-preset active" data-preset="today">Hari Ini</button>
-            <button type="button" class="btn-preset" data-preset="yesterday">Kemarin</button>
-            <button type="button" class="btn-preset" data-preset="week">1 Minggu Ini (7 Hari)</button>
-            <button type="button" class="btn-preset" data-preset="month">Bulan Ini</button>
-            <button type="button" class="btn-preset" data-preset="all">Semua Riwayat</button>
+  <div id="rekap-modal" class="rekap-modal-overlay" style="display: none;">
+    <div class="rekap-modal-box">
+      <header class="rekap-modal-header">
+        <div class="rekap-modal-title-wrap">
+          <h2 class="rekap-modal-title">📊 Rekap Pemasukan & Riwayat Transaksi</h2>
+          <span class="rekap-modal-sub">Laporan Omzet dan Pembayaran Saung H. Amir</span>
+        </div>
+        <button type="button" id="btn-close-rekap-modal" class="rekap-modal-close-btn" title="Tutup Rekap">✕ Tutup</button>
+      </header>
+
+      <div class="rekap-modal-body">
+        <div class="pos-rekap-container">
+          
+          <!-- Filter Rentang Waktu (Harian / Mingguan / Kustom) -->
+          <div class="rekap-filter-card">
+            <div class="rekap-filter-header">
+              <strong style="font-size: 1rem; color: #0f172a;">📅 Filter Rentang Waktu:</strong>
+              <div class="rekap-presets">
+                <button type="button" class="btn-preset active" data-preset="today">Hari Ini</button>
+                <button type="button" class="btn-preset" data-preset="yesterday">Kemarin</button>
+                <button type="button" class="btn-preset" data-preset="week">1 Minggu Ini (7 Hari)</button>
+                <button type="button" class="btn-preset" data-preset="month">Bulan Ini</button>
+                <button type="button" class="btn-preset" data-preset="all">Semua Riwayat</button>
+              </div>
+            </div>
+
+            <div class="rekap-custom-dates">
+              <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">Dari Tanggal:</label>
+              <input type="date" id="rekap-start-date" class="date-filter-input">
+              <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">Sampai:</label>
+              <input type="date" id="rekap-end-date" class="date-filter-input">
+              <button type="button" id="btn-apply-filter" class="btn-apply-filter">Terapkan Filter</button>
+            </div>
           </div>
-        </div>
 
-        <div class="rekap-custom-dates">
-          <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">Dari Tanggal:</label>
-          <input type="date" id="rekap-start-date" class="date-filter-input">
-          <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">Sampai:</label>
-          <input type="date" id="rekap-end-date" class="date-filter-input">
-          <button type="button" id="btn-apply-filter" class="btn-apply-filter">Terapkan Filter</button>
-        </div>
-      </div>
+          <!-- Kartu Ringkasan KPI Pemasukan Berdasarkan Filter -->
+          <div class="rekap-kpi-grid">
+            <div class="kpi-card">
+              <span class="kpi-title">💵 Total Tunai</span>
+              <strong id="kpi-tunai" class="kpi-value">Rp 0</strong>
+              <span id="kpi-tunai-count" class="kpi-sub">0 transaksi</span>
+            </div>
 
-      <!-- Kartu Ringkasan KPI Pemasukan Berdasarkan Filter -->
-      <div class="rekap-kpi-grid">
-        <div class="kpi-card">
-          <span class="kpi-title">💵 Total Tunai</span>
-          <strong id="kpi-tunai" class="kpi-value">Rp 0</strong>
-          <span id="kpi-tunai-count" class="kpi-sub">0 transaksi</span>
-        </div>
+            <div class="kpi-card">
+              <span class="kpi-title">📱 Total QRIS</span>
+              <strong id="kpi-qris" class="kpi-value">Rp 0</strong>
+              <span id="kpi-qris-count" class="kpi-sub">0 transaksi</span>
+            </div>
 
-        <div class="kpi-card">
-          <span class="kpi-title">📱 Total QRIS</span>
-          <strong id="kpi-qris" class="kpi-value">Rp 0</strong>
-          <span id="kpi-qris-count" class="kpi-sub">0 transaksi</span>
-        </div>
+            <div class="kpi-card">
+              <span class="kpi-title">💳 Total Debit</span>
+              <strong id="kpi-debit" class="kpi-value">Rp 0</strong>
+              <span id="kpi-debit-count" class="kpi-sub">0 transaksi</span>
+            </div>
 
-        <div class="kpi-card">
-          <span class="kpi-title">💳 Total Debit</span>
-          <strong id="kpi-debit" class="kpi-value">Rp 0</strong>
-          <span id="kpi-debit-count" class="kpi-sub">0 transaksi</span>
-        </div>
-
-        <div class="kpi-card kpi-grand">
-          <span class="kpi-title">⭐ Grand Total Pemasukan</span>
-          <strong id="kpi-grand-total" class="kpi-value">Rp 0</strong>
-          <span id="kpi-total-transaksi" class="kpi-sub">Total 0 transaksi</span>
-        </div>
-      </div>
-
-      <!-- Tabel Riwayat Transaksi Sesuai Rentang Waktu & Download CSV/Excel -->
-      <div class="rekap-table-card">
-        <div class="rekap-table-header">
-          <div>
-            <h3 style="font-size: 1.1rem; font-weight: 800; color: #0f172a;" id="rekap-table-title">Daftar Transaksi Lunas</h3>
-            <span style="font-size: 0.78rem; color: #64748b;" id="rekap-range-label">Menampilkan data hari ini</span>
+            <div class="kpi-card kpi-grand">
+              <span class="kpi-title">⭐ Grand Total Pemasukan</span>
+              <strong id="kpi-grand-total" class="kpi-value">Rp 0</strong>
+              <span id="kpi-total-transaksi" class="kpi-sub">Total 0 transaksi</span>
+            </div>
           </div>
-          <button type="button" id="btn-download-csv" class="btn-download-csv">
-            <span aria-hidden="true">📥</span>
-            <span>Download Rekap (Excel/CSV)</span>
-          </button>
-        </div>
 
-        <div class="rekap-table-wrap">
-          <table class="rekap-table">
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>Waktu Transaksi</th>
-                <th>Meja / Layanan</th>
-                <th>Menu Pesanan</th>
-                <th>Metode</th>
-                <th style="text-align: right;">Total Tagihan</th>
-              </tr>
-            </thead>
-            <tbody id="rekap-table-body">
-              <tr>
-                <td colspan="6" style="text-align: center; color: #94a3b8; padding: 2rem;">
-                  Tidak ada transaksi tercatat pada rentang tanggal ini.
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- Tabel Riwayat Transaksi Sesuai Rentang Waktu & Download CSV/Excel -->
+          <div class="rekap-table-card">
+            <div class="rekap-table-header">
+              <div>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #0f172a;" id="rekap-table-title">Daftar Transaksi Lunas</h3>
+                <span style="font-size: 0.78rem; color: #64748b;" id="rekap-range-label">Menampilkan data hari ini</span>
+              </div>
+              <button type="button" id="btn-download-csv" class="btn-download-csv">
+                <span aria-hidden="true">📥</span>
+                <span>Download Rekap (Excel/CSV)</span>
+              </button>
+            </div>
+
+            <div class="rekap-table-wrap">
+              <table class="rekap-table">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Waktu Transaksi</th>
+                    <th>Meja / Layanan</th>
+                    <th>Menu Pesanan</th>
+                    <th>Metode</th>
+                    <th style="text-align: right;">Total Tagihan</th>
+                  </tr>
+                </thead>
+                <tbody id="rekap-table-body">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: #94a3b8; padding: 2rem;">
+                      Tidak ada transaksi tercatat pada rentang tanggal ini.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       </div>
-
     </div>
-  </section>
+  </div>
 
   <!-- ====================================================================
        MODAL PEMBAYARAN TUNAI (HITUNG KEMBALIAN REAL-TIME)
