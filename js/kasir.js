@@ -431,15 +431,15 @@ function renderMenuGrid() {
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `pos-menu-btn ${state.isOjol ? 'ojol-active' : ''} ${isCustom ? 'is-custom-item' : ''}`;
+    btn.className = `pos-menu-btn menu-item-row menu-list-item ${state.isOjol ? 'ojol-active' : ''} ${isCustom ? 'is-custom-item' : ''}`;
     btn.setAttribute('title', `Tambah ${item.name} (${formatRupiah(itemPrice)})${isCustom ? ' [Menu Kasir]' : ''}`);
 
     btn.innerHTML = `
-      <div class="pos-menu-btn-left">
-        <strong class="pos-menu-btn-name">${item.name}</strong>
-        ${isCustom ? '<span style="font-size: 0.78rem; background: #fef3c7; color: #b45309; padding: 3px 8px; border-radius: 6px; font-weight: 700; margin-left: 8px;">[Manual]</span>' : ''}
+      <div class="pos-menu-btn-left menu-item-left">
+        <strong class="pos-menu-btn-name menu-item-name">${item.name}</strong>
+        ${isCustom ? '<span style="font-size: 0.78rem; background: #fef3c7; color: #b45309; padding: 3px 8px; border-radius: 6px; font-weight: 700; margin-left: 8px; flex-shrink: 0;">[Manual]</span>' : ''}
       </div>
-      <span class="pos-menu-btn-price">${formatRupiah(itemPrice)}</span>
+      <span class="pos-menu-btn-price menu-item-price">${formatRupiah(itemPrice)}</span>
     `;
 
     btn.addEventListener('click', () => {

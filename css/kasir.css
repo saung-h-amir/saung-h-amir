@@ -25,6 +25,13 @@
   padding: 0;
 }
 
+html {
+  max-width: 100vw;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 body {
   font-family: var(--pos-font);
   background-color: var(--pos-bg);
@@ -32,7 +39,9 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  max-width: 100vw;
   overflow-x: hidden;
+  width: 100%;
 }
 
 /* --------------------------------------------------------------------------
@@ -434,20 +443,31 @@ body {
   padding: 4px;
 }
 
-.pos-categories-pills {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding: 4px 2px 8px 2px;
-  -webkit-overflow-scrolling: touch;
+.pos-categories-pills,
+.category-nav,
+.category-tabs,
+#pos-categories,
+#category-filter {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
   scrollbar-width: none;
 }
 
-.pos-categories-pills::-webkit-scrollbar {
-  display: none;
+.pos-categories-pills::-webkit-scrollbar,
+.category-nav::-webkit-scrollbar,
+.category-tabs::-webkit-scrollbar {
+  display: none !important;
 }
 
-.pos-category-btn {
+.pos-category-btn,
+.category-btn {
   background: #f1f5f9;
   border: 1.5px solid #cbd5e1;
   padding: 8px 16px;
@@ -455,7 +475,8 @@ body {
   font-size: 0.95rem;
   font-weight: 700;
   color: #334155;
-  white-space: nowrap;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -464,12 +485,14 @@ body {
   user-select: none;
 }
 
-.pos-category-btn:hover {
+.pos-category-btn:hover,
+.category-btn:hover {
   background: #e2e8f0;
   border-color: #94a3b8;
 }
 
-.pos-category-btn.active {
+.pos-category-btn.active,
+.category-btn.active {
   background: var(--pos-primary);
   color: #ffffff;
   border-color: var(--pos-primary);
@@ -496,6 +519,10 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 0.65rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .pos-menu-grid {
@@ -503,63 +530,87 @@ body {
   flex-direction: column;
   gap: 8px;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.pos-menu-btn {
+.pos-menu-btn,
+.menu-item-row,
+.menu-list-item {
   background: #ffffff;
   border: 2px solid #cbd5e1;
   border-radius: 12px;
-  padding: 15px 20px;
+  padding: 14px 16px !important;
   text-align: left;
   cursor: pointer;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  min-height: 64px;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  min-height: 60px;
   transition: all 0.15s ease;
   user-select: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.pos-menu-btn:hover {
+.pos-menu-btn:hover,
+.menu-item-row:hover,
+.menu-list-item:hover {
   border-color: #15803d;
   background: #f0fdf4;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
 }
 
-.pos-menu-btn:active {
+.pos-menu-btn:active,
+.menu-item-row:active,
+.menu-list-item:active {
   transform: scale(0.99);
   background: #dcfce7;
   border-color: #16a34a;
 }
 
-.pos-menu-btn-left {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex: 1;
-  padding-right: 1rem;
+.pos-menu-btn-left,
+.menu-item-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  padding-right: 8px !important;
 }
 
-.pos-menu-btn-name {
-  font-size: 1.25rem; /* ~20px Sangat Besar & Jelas untuk Lansia */
-  font-weight: 800;
-  color: #0f172a;
-  line-height: 1.3;
+.pos-menu-btn-name,
+.menu-item-name {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  line-height: 1.35 !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  text-align: left !important;
 }
 
-.pos-menu-btn-price {
-  font-size: 1.25rem; /* ~20px Sangat Besar & Jelas */
-  font-weight: 900;
-  color: #15803d; /* Warna hijau terang */
-  white-space: nowrap;
+.pos-menu-btn-price,
+.menu-item-price {
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  color: #16a34a !important; /* Hijau kontras */
+  text-align: right !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  margin-left: 12px !important;
 }
 
-.pos-menu-btn.ojol-active .pos-menu-btn-price {
-  color: #1d4ed8;
+.pos-menu-btn.ojol-active .pos-menu-btn-price,
+.pos-menu-btn.ojol-active .menu-item-price {
+  color: #1d4ed8 !important;
 }
 
 .custom-badge-pill {
@@ -2720,37 +2771,51 @@ body.alarm-flash-active .pos-header {
   /* --------------------------------------------------------------------------
      2. TOMBOL NAVIGASI FILTER KATEGORI (Nasi, Sayur, dll.) EKSTRA BESAR
      -------------------------------------------------------------------------- */
-  .pos-categories-pills {
+  .pos-categories-pills,
+  .category-nav,
+  .category-tabs,
+  #pos-categories,
+  #category-filter {
     display: flex !important;
-    gap: 10px !important;
-    padding: 10px 4px !important;
+    flex-wrap: nowrap !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: none !important;
     width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    overscroll-behavior-x: contain !important;
+    touch-action: pan-x !important;
   }
 
-  .pos-categories-pills::-webkit-scrollbar {
+  .pos-categories-pills::-webkit-scrollbar,
+  .category-nav::-webkit-scrollbar,
+  .category-tabs::-webkit-scrollbar,
+  #pos-categories::-webkit-scrollbar,
+  #category-filter::-webkit-scrollbar {
     display: none !important;
   }
 
   .pos-category-btn,
   .category-btn {
-    font-size: 17px !important;
+    font-size: 16px !important;
     font-weight: 700 !important;
-    padding: 12px 22px !important;
+    padding: 10px 18px !important;
     border-radius: 30px !important;
     border: 2px solid #cbd5e1 !important;
     background: #f1f5f9 !important;
     color: #1e293b !important;
     white-space: nowrap !important;
-    min-height: 48px !important;
+    min-height: 46px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     flex-shrink: 0 !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
+    box-sizing: border-box !important;
   }
 
   .pos-category-btn.active,
@@ -2765,6 +2830,19 @@ body.alarm-flash-active .pos-header {
   /* --------------------------------------------------------------------------
      3. PANEL INPUT PESANAN / KERANJANG DI BAGIAN BAWAH EKSTRA BESAR
      -------------------------------------------------------------------------- */
+  /* KUNCI LEBAR LAYAR MOBILE (ANTI MELEBAR KE SAMPING) */
+  html,
+  body,
+  #app,
+  .pos-app,
+  .pos-main,
+  .pos-container {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
   .pos-container {
     grid-template-columns: 1fr !important;
     height: auto !important;
@@ -2776,6 +2854,17 @@ body.alarm-flash-active .pos-header {
     overflow: visible !important;
     border-right: none !important;
     border-bottom: 3px solid #cbd5e1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .pos-filter-bar {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 8px 10px !important;
+    overflow: visible !important;
   }
 
   .pos-grid-scroll {
@@ -2784,6 +2873,70 @@ body.alarm-flash-active .pos-header {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     padding: 0.75rem 0.65rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .pos-menu-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  /* BARIS DAFTAR MENU & HARGA TERKUNCI DI KANAN */
+  .pos-menu-btn,
+  .menu-item-row,
+  .menu-list-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 14px 16px !important;
+    border: 2px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    min-height: 60px !important;
+  }
+
+  .pos-menu-btn-left,
+  .menu-item-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .pos-menu-btn-name,
+  .menu-item-name {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    line-height: 1.35 !important;
+    text-align: left !important;
+  }
+
+  .pos-menu-btn-price,
+  .menu-item-price {
+    flex-shrink: 0 !important;
+    margin-left: 12px !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    color: #16a34a !important; /* Hijau kontras */
+    text-align: right !important;
+    white-space: nowrap !important;
   }
 
   .pos-cart-panel {
