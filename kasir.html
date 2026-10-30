@@ -379,6 +379,42 @@
     </div>
   </div>
 
+  <!-- Modal Edit Pesanan (Ubah Qty & Hapus Item Belum Lunas) -->
+  <div id="edit-order-modal" class="pos-modal-overlay" style="display: none;">
+    <div class="pos-modal-box edit-order-modal-box">
+      <header class="pos-modal-header">
+        <div>
+          <h3 class="pos-modal-title" id="edit-order-modal-title">✏️ Edit Pesanan Meja</h3>
+          <span class="edit-order-modal-sub" id="edit-order-modal-sub">Ubah porsi atau hapus menu jika habis di dapur</span>
+        </div>
+        <button type="button" id="btn-close-edit-order-modal" class="pos-modal-close" title="Tutup">✕</button>
+      </header>
+      <div class="pos-modal-body">
+        <div id="edit-order-items-container" class="edit-order-items-container">
+          <!-- Diisi via JavaScript -->
+        </div>
+
+        <!-- Ringkasan Total Hasil Edit -->
+        <div class="edit-order-summary-box">
+          <div class="edit-summary-row">
+            <span>Total Menu:</span>
+            <strong id="edit-order-total-items">0 item</strong>
+          </div>
+          <div class="edit-summary-row edit-summary-grand">
+            <span>Total Tagihan Baru:</span>
+            <strong id="edit-order-new-total" class="edit-new-total-val">Rp 0</strong>
+          </div>
+        </div>
+      </div>
+      <div class="edit-order-modal-footer">
+        <button type="button" id="btn-cancel-edit-order" class="btn-modal-cancel">Batal</button>
+        <button type="button" id="btn-save-edit-order" class="btn-save-edit-order">
+          💾 Simpan Perubahan Pesanan
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Tambah Menu Baru (Database Firestore) -->
   <div id="custom-menu-modal" class="pos-modal-overlay" style="display: none;">
     <div class="pos-modal-box custom-menu-modal-box">

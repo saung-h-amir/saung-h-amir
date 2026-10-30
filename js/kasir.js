@@ -137,6 +137,17 @@ const dom = {
   // Tab 2: Tagihan Kasir
   cashierBillsContainer: document.getElementById('cashier-bills-container'),
 
+  // Modal Edit Pesanan (Meja Belum Lunas)
+  editOrderModal: document.getElementById('edit-order-modal'),
+  editOrderModalTitle: document.getElementById('edit-order-modal-title'),
+  editOrderModalSub: document.getElementById('edit-order-modal-sub'),
+  btnCloseEditOrderModal: document.getElementById('btn-close-edit-order-modal'),
+  btnCancelEditOrder: document.getElementById('btn-cancel-edit-order'),
+  btnSaveEditOrder: document.getElementById('btn-save-edit-order'),
+  editOrderItemsContainer: document.getElementById('edit-order-items-container'),
+  editOrderTotalItems: document.getElementById('edit-order-total-items'),
+  editOrderNewTotal: document.getElementById('edit-order-new-total'),
+
   // Modal Pembayaran Tunai
   cashModal: document.getElementById('cash-modal'),
   cashModalTitle: document.getElementById('cash-modal-title'),
@@ -785,10 +796,16 @@ function renderCashierBills(groups) {
       </div>
 
       <footer class="bill-footer">
-        <button type="button" class="btn-bill-print">
-          <span>🖨️</span>
-          <span>Cetak Struk Tagihan</span>
-        </button>
+        <div class="bill-actions-row">
+          <button type="button" class="btn-bill-edit">
+            <span>✏️</span>
+            <span>Edit Pesanan</span>
+          </button>
+          <button type="button" class="btn-bill-print">
+            <span>🖨️</span>
+            <span>Cetak Struk</span>
+          </button>
+        </div>
 
         <div class="bill-settle-group">
           <button type="button" class="btn-settle btn-settle-tunai" data-method="Tunai">
@@ -803,6 +820,11 @@ function renderCashierBills(groups) {
         </div>
       </footer>
     `;
+
+    // Event Edit Pesanan
+    card.querySelector('.btn-bill-edit').addEventListener('click', () => {
+      openEditOrderModal(group);
+    });
 
     // Event Cetak Struk
     card.querySelector('.btn-bill-print').addEventListener('click', () => {
@@ -830,6 +852,258 @@ function renderCashierBills(groups) {
 
     dom.cashierBillsContainer.appendChild(card);
   });
+}
+
+/* --------------------------------------------------------------------------
+   4b. MODAL EDIT PESANAN (UBAH QTY & HAPUS ITEM TIKET BELUM LUNAS)
+   -------------------------------------------------------------------------- */
+let activeEditingGroup = null;
+let activeEditingTickets = [];
+
+function openEditOrderModal(group) {
+  if (!group || !group.tickets || group.tickets.length === 0) return;
+  activeEditingGroup = group;
+
+  // Kloning mendalam (deep clone) agar perubahan belum tersimpan tidak merusak data lokal
+  activeEditingTickets = group.tickets.map((t) => ({
+    id: t.id,
+    nomorMeja: t.nomorMeja,
+    isOjol: Boolean(t.isOjol),
+    kodeOjol: t.kodeOjol || '',
+    createdAt: t.createdAt,
+    items: (t.items || []).map((it) => ({
+      id: it.id || '',
+      name: it.name || it.nama || 'Menu',
+      price: Number(it.price || it.harga || 0),
+      qty: Number(it.qty || it.quantity || 1),
+      subtotal: Number(it.price || it.harga || 0) * Number(it.qty || it.quantity || 1),
+      note: it.note || it.catatan || ''
+    }))
+  }));
+
+  const displayTitle = group.isOjol
+    ? `🛵 GoFood (${group.kodeOjol || 'Driver'})`
+    : group.nomorMeja;
+
+  if (dom.editOrderModalTitle) {
+    dom.editOrderModalTitle.textContent = `✏️ Edit Pesanan - ${displayTitle}`;
+  }
+  if (dom.editOrderModalSub) {
+    dom.editOrderModalSub.textContent = `Ubah jumlah porsi atau hapus menu yang habis untuk ${displayTitle}`;
+  }
+
+  renderEditOrderModal();
+
+  if (dom.editOrderModal) {
+    dom.editOrderModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeEditOrderModal() {
+  if (dom.editOrderModal) {
+    dom.editOrderModal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+  activeEditingGroup = null;
+  activeEditingTickets = [];
+}
+
+function handleEditItemQty(ticketIdx, itemIdx, delta) {
+  const ticket = activeEditingTickets[ticketIdx];
+  if (!ticket || !ticket.items[itemIdx]) return;
+
+  const item = ticket.items[itemIdx];
+  const nextQty = item.qty + delta;
+
+  if (nextQty <= 0) {
+    ticket.items.splice(itemIdx, 1);
+  } else {
+    item.qty = Math.min(99, nextQty);
+    item.subtotal = item.qty * item.price;
+  }
+
+  renderEditOrderModal();
+}
+
+function handleDeleteEditItem(ticketIdx, itemIdx) {
+  const ticket = activeEditingTickets[ticketIdx];
+  if (!ticket || !ticket.items[itemIdx]) return;
+  const itemName = ticket.items[itemIdx].name;
+  if (confirm(`Hapus menu "${itemName}" dari daftar pesanan?`)) {
+    ticket.items.splice(itemIdx, 1);
+    renderEditOrderModal();
+  }
+}
+
+function renderEditOrderModal() {
+  if (!dom.editOrderItemsContainer) return;
+
+  let totalItemsCount = 0;
+  let newGrandTotal = 0;
+  const isMultiple = activeEditingTickets.length > 1;
+
+  dom.editOrderItemsContainer.innerHTML = '';
+
+  activeEditingTickets.forEach((ticket, tIdx) => {
+    const ticketTotal = ticket.items.reduce((sum, it) => sum + (it.qty * it.price), 0);
+    newGrandTotal += ticketTotal;
+    const ticketItemCount = ticket.items.reduce((sum, it) => sum + it.qty, 0);
+    totalItemsCount += ticketItemCount;
+
+    const ticketSection = document.createElement('div');
+    ticketSection.className = 'edit-ticket-section';
+
+    let headerHtml = '';
+    if (isMultiple) {
+      headerHtml = `
+        <div class="edit-ticket-header">
+          <span>📦 Tiket #${tIdx + 1} (${ticket.items.length} menu)</span>
+          <strong style="color: #15803d;">${formatRupiah(ticketTotal)}</strong>
+        </div>
+      `;
+    }
+
+    let itemsHtml = '';
+    if (ticket.items.length === 0) {
+      itemsHtml = `
+        <div class="edit-empty-warning" style="margin: 0.75rem;">
+          ⚠️ Seluruh menu pada tiket #${tIdx + 1} ini telah dihapus.
+        </div>
+      `;
+    } else {
+      itemsHtml = ticket.items.map((it, iIdx) => `
+        <div class="edit-item-row" data-t-idx="${tIdx}" data-i-idx="${iIdx}">
+          <div class="edit-item-info">
+            <strong class="edit-item-name">${it.name}</strong>
+            <span class="edit-item-price">${formatRupiah(it.price)} / porsi</span>
+            ${it.note ? `<span class="edit-item-note">Catatan: ${it.note}</span>` : ''}
+          </div>
+          <div class="edit-item-actions">
+            <div class="edit-qty-stepper">
+              <button type="button" class="btn-edit-qty-minus" title="Kurangi 1 porsi">－</button>
+              <span class="edit-qty-display">${it.qty}</span>
+              <button type="button" class="btn-edit-qty-plus" title="Tambah 1 porsi">＋</button>
+            </div>
+            <div class="edit-item-subtotal">${formatRupiah(it.qty * it.price)}</div>
+            <button type="button" class="btn-edit-item-delete" title="Hapus item ini dari pesanan">
+              🗑️ Hapus
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    ticketSection.innerHTML = `
+      ${headerHtml}
+      <div class="edit-ticket-body">
+        ${itemsHtml}
+      </div>
+    `;
+
+    dom.editOrderItemsContainer.appendChild(ticketSection);
+  });
+
+  // Pasang Event Listeners ke Tombol Stepper dan Hapus
+  dom.editOrderItemsContainer.querySelectorAll('.edit-item-row').forEach((row) => {
+    const tIdx = parseInt(row.getAttribute('data-t-idx'), 10);
+    const iIdx = parseInt(row.getAttribute('data-i-idx'), 10);
+
+    const minusBtn = row.querySelector('.btn-edit-qty-minus');
+    if (minusBtn) minusBtn.addEventListener('click', () => handleEditItemQty(tIdx, iIdx, -1));
+
+    const plusBtn = row.querySelector('.btn-edit-qty-plus');
+    if (plusBtn) plusBtn.addEventListener('click', () => handleEditItemQty(tIdx, iIdx, 1));
+
+    const deleteBtn = row.querySelector('.btn-edit-item-delete');
+    if (deleteBtn) deleteBtn.addEventListener('click', () => handleDeleteEditItem(tIdx, iIdx));
+  });
+
+  if (dom.editOrderTotalItems) {
+    const totalDistinctMenus = activeEditingTickets.reduce((acc, t) => acc + t.items.length, 0);
+    dom.editOrderTotalItems.textContent = `${totalItemsCount} porsi (${totalDistinctMenus} menu)`;
+  }
+  if (dom.editOrderNewTotal) {
+    dom.editOrderNewTotal.textContent = formatRupiah(newGrandTotal);
+  }
+}
+
+async function handleSaveOrderEdits() {
+  if (!activeEditingGroup || activeEditingTickets.length === 0) return;
+
+  const totalRemainingItems = activeEditingTickets.reduce((acc, t) => acc + t.items.length, 0);
+
+  // Jika SEMUA item dari seluruh tiket dihapus
+  if (totalRemainingItems === 0) {
+    const confirmCancel = confirm(
+      'Seluruh item pesanan telah dihapus!\nApakah Anda ingin membatalkan (menghapus) tiket pesanan ini sepenuhnya dari sistem kasir dan dapur?'
+    );
+    if (!confirmCancel) return;
+
+    if (dom.btnSaveEditOrder) {
+      dom.btnSaveEditOrder.disabled = true;
+      dom.btnSaveEditOrder.textContent = 'Membatalkan Tiket...';
+    }
+
+    try {
+      for (const ticket of activeEditingTickets) {
+        await deleteDoc(doc(db, 'orders', ticket.id));
+      }
+      showToast('Seluruh tiket pesanan berhasil dibatalkan dan dihapus.', 'info');
+      closeEditOrderModal();
+    } catch (err) {
+      console.error('Gagal menghapus tiket pesanan:', err);
+      alert('Gagal membatalkan tiket: ' + (err.message || 'Kesalahan jaringan.'));
+    } finally {
+      if (dom.btnSaveEditOrder) {
+        dom.btnSaveEditOrder.disabled = false;
+        dom.btnSaveEditOrder.textContent = '💾 Simpan Perubahan Pesanan';
+      }
+    }
+    return;
+  }
+
+  // Jika masih ada item tersisa, perbarui ke Firestore
+  if (dom.btnSaveEditOrder) {
+    dom.btnSaveEditOrder.disabled = true;
+    dom.btnSaveEditOrder.textContent = 'Menyimpan Perubahan...';
+  }
+
+  try {
+    for (const ticket of activeEditingTickets) {
+      if (ticket.items.length === 0) {
+        await deleteDoc(doc(db, 'orders', ticket.id));
+      } else {
+        const sanitizedItems = ticket.items.map((it) => ({
+          id: String(it.id || ''),
+          name: String(it.name),
+          qty: Number(it.qty),
+          price: Number(it.price),
+          subtotal: Number(it.qty * it.price),
+          note: String(it.note || '').trim()
+        }));
+
+        const newTotal = sanitizedItems.reduce((acc, it) => acc + it.subtotal, 0);
+
+        await updateDoc(doc(db, 'orders', ticket.id), {
+          items: sanitizedItems,
+          totalHarga: Number(newTotal),
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+
+    showToast('Perubahan pesanan berhasil disimpan ke database!', 'success');
+    closeEditOrderModal();
+  } catch (err) {
+    console.error('Gagal memperbarui pesanan di Firestore:', err);
+    alert('Gagal menyimpan perubahan pesanan: ' + (err.message || 'Kesalahan jaringan.'));
+  } finally {
+    if (dom.btnSaveEditOrder) {
+      dom.btnSaveEditOrder.disabled = false;
+      dom.btnSaveEditOrder.textContent = '💾 Simpan Perubahan Pesanan';
+    }
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -1191,63 +1465,113 @@ function downloadFilteredCsv() {
 }
 
 /* --------------------------------------------------------------------------
-   7. CETAK STRUK BLUETOOTH THERMAL 58MM / 80MM
+   7. CETAK STRUK BLUETOOTH THERMAL VIA NAVIGATOR.SHARE() & RAWBT
    -------------------------------------------------------------------------- */
-function printCustomerReceipt(group, mergedItems, cashReceived = null, changeAmount = null) {
-  if (!dom.printArea) return;
+function formatThermalReceiptText(group, mergedItems, cashReceived = null, changeAmount = null) {
+  const line = '--------------------------------';
+  const dblLine = '================================';
+  const width = 32;
+
+  function center(text) {
+    if (!text) return '';
+    const str = String(text).trim();
+    if (str.length >= width) return str;
+    const pad = Math.floor((width - str.length) / 2);
+    return ' '.repeat(pad) + str;
+  }
+
+  function row(left, right) {
+    const l = String(left || '');
+    const r = String(right || '');
+    if (l.length + r.length + 1 <= width) {
+      const space = width - l.length - r.length;
+      return l + ' '.repeat(space) + r;
+    }
+    return l + '\n' + ' '.repeat(Math.max(0, width - r.length)) + r;
+  }
 
   const waktu = formatDate(new Date());
   const displayTitle = group.isOjol
-    ? `GoFood / Grab (${group.kodeOjol || 'Driver'})`
-    : group.nomorMeja;
+    ? `GoFood (${group.kodeOjol || 'Driver'})`
+    : (group.nomorMeja || 'Take-Away');
 
-  const itemsList = mergedItems.map((item) => `
-    <div class="print-row">
-      <span class="print-item-title">${item.name}</span>
-      <span>${formatRupiah(item.subtotal)}</span>
-    </div>
-    <div class="print-row" style="font-size: 10px; color: #333;">
-      <span>  ${item.qty} x ${formatRupiah(item.price)}</span>
-    </div>
-    ${item.note ? `<div class="print-item-note">  (${item.note})</div>` : ''}
-  `).join('');
+  const lines = [
+    dblLine,
+    center('SAUNG HAJI AMIR'),
+    center('Khas Masakan Sunda'),
+    center('Cisauk, Legok, Tangerang'),
+    center('Telp/WA: 0812-1956-9995'),
+    line,
+    row('Waktu   :', waktu),
+    row('Layanan :', displayTitle),
+    line,
+    row('MENU', 'SUBTOTAL'),
+    line
+  ];
 
-  let cashDetailHtml = '';
+  mergedItems.forEach((item) => {
+    const itemTitle = `${item.qty}x ${item.name}`;
+    const subtotal = formatRupiah(item.subtotal);
+    lines.push(row(itemTitle, subtotal));
+    if (item.qty > 1) {
+      lines.push(`   @${formatRupiah(item.price)}`);
+    }
+    if (item.note) {
+      lines.push(`   *Catatan: ${item.note}`);
+    }
+  });
+
+  lines.push(line);
+  lines.push(row('TOTAL TAGIHAN:', formatRupiah(group.totalHarga)));
+
   if (cashReceived !== null && cashReceived > 0) {
-    cashDetailHtml = `
-      <div class="print-row"><span>Bayar Tunai:</span><span>${formatRupiah(cashReceived)}</span></div>
-      <div class="print-row"><span>Kembalian:</span><span>${formatRupiah(changeAmount || 0)}</span></div>
-    `;
+    lines.push(row('Bayar Tunai  :', formatRupiah(cashReceived)));
+    lines.push(row('Kembalian    :', formatRupiah(changeAmount || 0)));
   }
 
-  dom.printArea.innerHTML = `
-    <div class="print-center print-header-title">SAUNG HAJI AMIR</div>
-    <div class="print-center">Masakan Khas Tradisional Sunda</div>
-    <div class="print-center">Cileutik, Jl. Raya Cisauk, Legok, Tangerang</div>
-    <div class="print-center">Telp/WA: 0812-1956-9995</div>
-    <div class="print-divider"></div>
-    <div class="print-row"><span>Tanggal :</span><span>${waktu}</span></div>
-    <div class="print-row"><span>Layanan :</span><strong class="print-item-title">${displayTitle}</strong></div>
-    <div class="print-row"><span>Status  :</span><strong>STRUK PEMBAYARAN</strong></div>
-    <div class="print-double-divider"></div>
-    <div class="print-row print-bold">
-      <span>MENU</span>
-      <span>SUBTOTAL</span>
-    </div>
-    <div class="print-divider"></div>
-    ${itemsList}
-    <div class="print-divider"></div>
-    <div class="print-row print-total-big">
-      <span>TOTAL TAGIHAN:</span>
-      <span>${formatRupiah(group.totalHarga)}</span>
-    </div>
-    ${cashDetailHtml}
-    <div class="print-double-divider"></div>
-    <div class="print-center print-bold">Hatur Nuhun Parantos Sumping!</div>
-    <div class="print-center">Selamat Menikmati Hidangan Kami</div>
-  `;
+  lines.push(dblLine);
+  lines.push(center('Hatur Nuhun Sumpingna!'));
+  lines.push(center('Selamat Menikmati Hidangan'));
+  lines.push(dblLine);
+  lines.push('\n');
 
-  window.print();
+  return lines.join('\n');
+}
+
+async function printCustomerReceipt(group, mergedItems, cashReceived = null, changeAmount = null) {
+  const strukText = formatThermalReceiptText(group, mergedItems, cashReceived, changeAmount);
+  const displayTitle = group.isOjol
+    ? `GoFood (${group.kodeOjol || 'Driver'})`
+    : (group.nomorMeja || 'Take-Away');
+
+  // Prioritas 1: Gunakan navigator.share() agar browser HP memunculkan dialog "Bagikan" ke printer Bluetooth (RawBT)
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `Struk - ${displayTitle}`,
+        text: strukText
+      });
+      showToast('Menu Cetak Struk / RawBT terbuka!', 'success');
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        // Pengguna membatalkan dialog share
+        return;
+      }
+      console.warn('Gagal navigator.share, beralih ke fallback clipboard:', err);
+    }
+  }
+
+  // Prioritas 2: Fallback salin teks struk murni ke clipboard
+  try {
+    await navigator.clipboard.writeText(strukText);
+    alert('Teks Struk berhasil disalin ke clipboard!\nSilakan paste ke aplikasi printer Bluetooth thermal Anda (seperti RawBT).\n\n' + strukText);
+  } catch (clipErr) {
+    if (dom.printArea) {
+      dom.printArea.innerHTML = `<pre style="font-family: monospace; font-size: 13px; line-height: 1.4; white-space: pre-wrap;">${strukText}</pre>`;
+      window.print();
+    }
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -1603,6 +1927,22 @@ function init() {
   if (dom.customMenuModal) {
     dom.customMenuModal.addEventListener('click', (e) => {
       if (e.target === dom.customMenuModal) closeCustomMenuModal();
+    });
+  }
+
+  // Edit Order Modal Events
+  if (dom.btnCloseEditOrderModal) {
+    dom.btnCloseEditOrderModal.addEventListener('click', closeEditOrderModal);
+  }
+  if (dom.btnCancelEditOrder) {
+    dom.btnCancelEditOrder.addEventListener('click', closeEditOrderModal);
+  }
+  if (dom.btnSaveEditOrder) {
+    dom.btnSaveEditOrder.addEventListener('click', handleSaveOrderEdits);
+  }
+  if (dom.editOrderModal) {
+    dom.editOrderModal.addEventListener('click', (e) => {
+      if (e.target === dom.editOrderModal) closeEditOrderModal();
     });
   }
 
