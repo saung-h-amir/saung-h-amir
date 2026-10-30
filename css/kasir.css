@@ -672,13 +672,13 @@ body {
 
 .pos-category-btn,
 .category-btn {
-  background: #f1f5f9;
-  border: 1.5px solid #cbd5e1;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #334155;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 4px !important;
+  padding: 6px 12px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #475569 !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
   cursor: pointer;
@@ -686,22 +686,23 @@ body {
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
-  user-select: none;
+  line-height: 1.2;
 }
 
 .pos-category-btn:hover,
 .category-btn:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #1e293b !important;
 }
 
 .pos-category-btn.active,
 .category-btn.active {
-  background: var(--pos-primary);
-  color: #ffffff;
-  border-color: var(--pos-primary);
-  font-weight: 800;
-  box-shadow: 0 2px 6px rgba(21, 128, 61, 0.3);
+  background: #0284c7 !important; /* Biru solid RestoQu */
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3) !important;
 }
 
 .pos-ojol-banner {
@@ -717,104 +718,281 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   LIST VIEW 1 BARIS (SANGAT BESAR & JELAS UNTUK STAF LANSIA)
+   WADAH DAFTAR MENU (RESTOQU COMPACT FLAT LIST)
    -------------------------------------------------------------------------- */
 .pos-grid-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 0.65rem;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 !important;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  background: #ffffff !important;
 }
 
 .pos-menu-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  background: #ffffff !important;
+  border-top: 1px solid #e2e8f0;
 }
 
+/* Susunan Tiap Baris Menu (Kompak & Ramping) */
+.restoqu-menu-row,
 .pos-menu-btn,
 .menu-item-row,
 .menu-list-item {
-  background: #ffffff;
-  border: 2px solid #cbd5e1;
-  border-radius: 12px;
-  padding: 14px 16px !important;
-  text-align: left;
-  cursor: pointer;
   display: flex !important;
   flex-direction: row !important;
   justify-content: space-between !important;
   align-items: center !important;
   width: 100% !important;
   max-width: 100% !important;
+  min-height: 52px !important;
+  padding: 10px 16px !important;
+  background: #ffffff !important;
+  border: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
   box-sizing: border-box !important;
-  min-height: 60px;
-  transition: all 0.15s ease;
-  user-select: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: background 0.15s ease;
+  text-align: left;
 }
 
+.restoqu-menu-row:hover,
 .pos-menu-btn:hover,
-.menu-item-row:hover,
-.menu-list-item:hover {
-  border-color: #15803d;
-  background: #f0fdf4;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+.menu-item-row:hover {
+  background: #f8fafc !important;
 }
 
-.pos-menu-btn:active,
-.menu-item-row:active,
-.menu-list-item:active {
-  transform: scale(0.99);
-  background: #dcfce7;
-  border-color: #16a34a;
+.restoqu-menu-row.in-cart {
+  background: #f0fdf4 !important; /* Soft green tint when in cart */
 }
 
+/* Sisi Kiri: Informasi Menu Vertikal 2 Baris */
+.restoqu-menu-info,
 .pos-menu-btn-left,
 .menu-item-left {
   display: flex !important;
-  align-items: center !important;
-  gap: 0.65rem !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
   flex: 1 1 auto !important;
   min-width: 0 !important;
-  overflow: hidden !important;
-  padding-right: 8px !important;
+  padding-right: 12px !important;
+  gap: 0 !important;
 }
 
+/* Baris 1: Nama Menu */
+.restoqu-menu-name,
 .pos-menu-btn-name,
 .menu-item-name {
-  font-size: 17px !important;
-  font-weight: 700 !important;
-  color: #0f172a !important;
-  line-height: 1.35 !important;
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  line-height: 1.3 !important;
   word-break: break-word !important;
   overflow-wrap: break-word !important;
   text-align: left !important;
+  margin: 0 !important;
 }
 
+/* Baris 2: Harga */
+.restoqu-menu-price,
 .pos-menu-btn-price,
 .menu-item-price {
-  font-size: 17px !important;
-  font-weight: 800 !important;
-  color: #16a34a !important; /* Hijau kontras */
-  text-align: right !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  margin-top: 2px !important;
+  text-align: left !important;
   white-space: nowrap !important;
-  flex-shrink: 0 !important;
-  margin-left: 12px !important;
 }
 
-.pos-menu-btn.ojol-active .pos-menu-btn-price,
-.pos-menu-btn.ojol-active .menu-item-price {
-  color: #1d4ed8 !important;
+.restoqu-badge-custom {
+  font-size: 11px;
+  background: #fef3c7;
+  color: #b45309;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Sisi Kanan: Aksi Masuk Keranjang */
+.restoqu-menu-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Tombol Tambah (Qty 0) */
+.btn-restoqu-add {
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0284c7 !important;
+  padding: 5px 14px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-restoqu-add:hover {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+}
+
+/* Kontrol Jumlah Kompak (Qty >= 1) */
+.restoqu-qty-control {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 2px 4px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-restoqu-qty {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.btn-restoqu-qty:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.btn-restoqu-qty:active {
+  transform: scale(0.92);
+}
+
+.restoqu-qty-num {
+  min-width: 26px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  padding: 0 4px;
+}
+
+/* --------------------------------------------------------------------------
+   CHECKOUT BAR MENGAMBANG DI DASAR LAYAR (RESTOQU STYLE)
+   -------------------------------------------------------------------------- */
+.restoqu-floating-checkout-bar {
+  position: fixed !important;
+  bottom: 68px !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 18px !important;
+  box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.25) !important;
+  z-index: 980 !important;
+  box-sizing: border-box !important;
+  border-top: 2px solid #334155;
+  animation: slideUpFloatingBar 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpFloatingBar {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.floating-checkout-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.floating-checkout-icon {
+  font-size: 1.5rem;
+}
+
+.floating-checkout-text-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.floating-checkout-summary {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  letter-spacing: 0.2px;
+}
+
+.floating-checkout-sub {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.btn-floating-checkout {
+  background: #0284c7 !important; /* Biru terang RestoQu */
+  color: #ffffff !important;
+  border: none !important;
+  padding: 8px 20px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+  transition: all 0.15s ease;
+}
+
+.btn-floating-checkout:hover {
+  background: #0369a1 !important;
+  transform: translateY(-1px);
+}
+
+.btn-floating-checkout:active {
+  transform: translateY(1px);
 }
 
 .custom-badge-pill {
@@ -3044,7 +3222,7 @@ body.alarm-flash-active .pos-header {
   }
 
   /* --------------------------------------------------------------------------
-     2. TOMBOL NAVIGASI FILTER KATEGORI (Nasi, Sayur, dll.) EKSTRA BESAR
+     2. STRIP NAVIGASI KATEGORI RINGKAS (RESTOQU STYLE)
      -------------------------------------------------------------------------- */
   .pos-categories-pills,
   .category-nav,
@@ -3059,10 +3237,12 @@ body.alarm-flash-active .pos-header {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    gap: 8px !important;
-    padding: 8px 12px !important;
+    gap: 6px !important;
+    padding: 8px 10px !important;
     overscroll-behavior-x: contain !important;
     touch-action: pan-x !important;
+    background: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
   }
 
   .pos-categories-pills::-webkit-scrollbar,
@@ -3075,15 +3255,17 @@ body.alarm-flash-active .pos-header {
 
   .pos-category-btn,
   .category-btn {
-    font-size: 16px !important;
+    font-size: 13px !important;
     font-weight: 700 !important;
-    padding: 10px 18px !important;
-    border-radius: 30px !important;
-    border: 2px solid #cbd5e1 !important;
-    background: #f1f5f9 !important;
-    color: #1e293b !important;
+    text-transform: uppercase !important;
+    padding: 6px 14px !important;
+    border-radius: 6px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #334155 !important;
     white-space: nowrap !important;
-    min-height: 46px !important;
+    min-height: 34px !important;
+    height: 34px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -3091,19 +3273,20 @@ body.alarm-flash-active .pos-header {
     cursor: pointer !important;
     transition: all 0.15s ease !important;
     box-sizing: border-box !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
   }
 
   .pos-category-btn.active,
   .category-btn.active {
-    background: #14532d !important; /* Hijau gelap pekat kontras tinggi */
+    background: #0284c7 !important; /* Solid blue RestoQu */
     color: #ffffff !important;
-    border-color: #14532d !important;
-    font-weight: 800 !important;
-    box-shadow: 0 4px 12px rgba(20, 83, 45, 0.35) !important;
+    border-color: #0284c7 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35) !important;
   }
 
   /* --------------------------------------------------------------------------
-     3. PANEL INPUT PESANAN / KERANJANG DI BAGIAN BAWAH EKSTRA BESAR
+     3. WADAH DAFTAR MENU (RESTOQU COMPACT FLAT LIST MOBILE)
      -------------------------------------------------------------------------- */
   /* KUNCI LEBAR LAYAR MOBILE (ANTI MELEBAR KE SAMPING) */
   html,
@@ -3128,30 +3311,33 @@ body.alarm-flash-active .pos-header {
     height: auto !important;
     overflow: visible !important;
     border-right: none !important;
-    border-bottom: 3px solid #cbd5e1 !important;
+    border-bottom: 2px solid #e2e8f0 !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+    background: #ffffff !important;
   }
 
   .pos-filter-bar {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    padding: 8px 10px !important;
+    padding: 0 !important;
     overflow: visible !important;
+    background: #ffffff !important;
   }
 
   .pos-grid-scroll {
     height: auto !important;
-    max-height: 52vh !important;
+    max-height: 55vh !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    padding: 0.75rem 0.65rem !important;
+    padding: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
+    background: #ffffff !important;
   }
 
   .pos-menu-grid {
@@ -3160,58 +3346,80 @@ body.alarm-flash-active .pos-header {
     box-sizing: border-box !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 0 !important;
+    background: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
   }
 
-  /* BARIS DAFTAR MENU & HARGA TERKUNCI DI KANAN */
+  /* BARIS MENU COMPACT FLAT LIST MOBILE (1:1 RESTOQU) */
+  .restoqu-menu-row,
   .pos-menu-btn,
   .menu-item-row,
   .menu-list-item {
     display: flex !important;
+    flex-direction: row !important;
     justify-content: space-between !important;
     align-items: center !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    padding: 14px 16px !important;
-    border: 2px solid #cbd5e1 !important;
-    border-radius: 12px !important;
+    padding: 10px 16px !important;
+    border: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    border-radius: 0 !important;
     background: #ffffff !important;
-    min-height: 60px !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    min-height: 52px !important;
+    text-align: left !important;
   }
 
+  .restoqu-menu-info,
   .pos-menu-btn-left,
   .menu-item-left {
     display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
     flex: 1 1 auto !important;
     min-width: 0 !important;
     overflow: hidden !important;
+    padding-right: 12px !important;
+    gap: 0 !important;
   }
 
+  .restoqu-menu-name,
   .pos-menu-btn-name,
   .menu-item-name {
     flex: 1 1 auto !important;
     min-width: 0 !important;
     word-break: break-word !important;
     overflow-wrap: break-word !important;
-    font-size: 17px !important;
-    font-weight: 700 !important;
-    color: #0f172a !important;
-    line-height: 1.35 !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: #1e293b !important;
+    line-height: 1.3 !important;
     text-align: left !important;
+    margin: 0 !important;
   }
 
+  .restoqu-menu-price,
   .pos-menu-btn-price,
   .menu-item-price {
     flex-shrink: 0 !important;
-    margin-left: 12px !important;
-    font-size: 17px !important;
-    font-weight: 800 !important;
-    color: #16a34a !important; /* Hijau kontras */
-    text-align: right !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #64748b !important;
+    text-align: left !important;
     white-space: nowrap !important;
+    margin-top: 2px !important;
+  }
+
+  /* Floating Checkout Bar Mobile Position */
+  .restoqu-floating-checkout-bar {
+    bottom: 64px !important;
+    padding: 8px 14px !important;
+    border-radius: 0 !important;
   }
 
   .pos-cart-panel {

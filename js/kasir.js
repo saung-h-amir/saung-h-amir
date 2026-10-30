@@ -63,8 +63,8 @@ function formatTimeOnly(dateObj) {
 // State Aplikasi POS
 const state = {
   isAuth: false,
-  activeTab: 'pane-input',
-  activeCategory: 'Semua',
+  activeTab: 'pane-tagihan',
+  activeCategory: 'ALL',
   searchKeyword: '',
   isOjol: false,
   cart: [],
@@ -96,6 +96,11 @@ const dom = {
   paneHome: document.getElementById('pane-home'),
   paneTagihan: document.getElementById('pane-tagihan'),
   paneInput: document.getElementById('pane-input'),
+
+  // Floating Checkout Bar RestoQu
+  floatingCheckoutBar: document.getElementById('floating-checkout-bar'),
+  floatingCheckoutSummary: document.getElementById('floating-checkout-summary'),
+  btnFloatingCheckout: document.getElementById('btn-floating-checkout'),
 
   // Tabs Nav Legacy
   tabBtnInput: document.getElementById('tab-btn-input'),
@@ -318,7 +323,17 @@ function switchTab(tabId) {
     }
   });
 
-  // 3. Scroll ke atas secara halus
+  // 3. Atur visibilitas Floating Checkout Bar RestoQu
+  const floatingBar = dom.floatingCheckoutBar || document.getElementById('floating-checkout-bar');
+  if (floatingBar) {
+    if (tabId === 'pane-input' && state.cart && state.cart.length > 0) {
+      floatingBar.style.setProperty('display', 'flex', 'important');
+    } else {
+      floatingBar.style.setProperty('display', 'none', 'important');
+    }
+  }
+
+  // 4. Scroll ke atas secara halus
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -340,9 +355,71 @@ window.hideRekap = closeRekapModal;
 window.switchTab = switchTab;
 
 /* --------------------------------------------------------------------------
-   3. TAB 1: INPUT PESANAN (MENU LIST VIEW 1 BARIS BESAR - A SAMPAI Z)
+   3. TAB 1: INPUT PESANAN (RESTOQU 1:1 COMPACT FLAT LIST & STRIP KATEGORI)
    -------------------------------------------------------------------------- */
-const categoriesList = POS_CATEGORIES;
+const RESTOQU_CATEGORIES = [
+  { id: 'ALL', label: 'SEMUA' },
+  { id: 'Nasi', label: 'A NASI' },
+  { id: 'Sayur', label: 'B SAYUR' },
+  { id: 'Daging', label: 'C DAGING' },
+  { id: 'Ayam', label: 'D AYAM' },
+  { id: 'Gurame', label: 'E GURAME' },
+  { id: 'Lauk', label: 'F LAUK' },
+  { id: 'Pepes', label: 'G PEPES' },
+  { id: 'Ikan Asin', label: 'H IKAN ASIN' },
+  { id: 'Sambal', label: 'I SAMBAL' },
+  { id: 'Jengkol Pete', label: 'J JENGKOL PETE' },
+  { id: 'Minuman', label: 'K MINUMAN' },
+  { id: 'Paket Berlima', label: 'L PAKET BERLIMA' },
+  { id: 'Ongkir', label: 'M ONGKIR' }
+];
+
+function matchesRestoQuCategory(item, catId) {
+  if (!catId || catId === 'ALL') return true;
+  const rawCat = String(item.category || item.posCategory || item.customCategory || '').toLowerCase();
+  const name = String(item.name || '').toLowerCase();
+
+  switch (catId) {
+    case 'Nasi':
+      return rawCat.includes('nasi') || name.includes('nasi') || name.includes('liwet') || name.includes('bakul');
+    case 'Sayur':
+      return rawCat.includes('sayur') || rawCat.includes('kuah') || rawCat.includes('tumis') ||
+             name.includes('sayur') || name.includes('kangkung') || name.includes('taoge') ||
+             name.includes('sop') || name.includes('asem') || name.includes('lalap');
+    case 'Daging':
+      return rawCat.includes('daging') || name.includes('daging') || name.includes('gepuk') ||
+             name.includes('iga') || name.includes('buntut') || name.includes('sapi');
+    case 'Ayam':
+      return rawCat.includes('ayam') || rawCat.includes('bebek') || name.includes('ayam') || name.includes('bebek');
+    case 'Gurame':
+      return rawCat.includes('gurame') || name.includes('gurame');
+    case 'Lauk':
+      return rawCat.includes('lauk') || rawCat.includes('gorengan') || rawCat.includes('seafood') ||
+             name.includes('tahu') || name.includes('tempe') || name.includes('mendoan') ||
+             name.includes('bakwan') || name.includes('telur') || name.includes('nila') ||
+             name.includes('udang') || name.includes('cumi');
+    case 'Pepes':
+      return rawCat.includes('pepes') || name.includes('pepes');
+    case 'Ikan Asin':
+      return rawCat.includes('asin') || name.includes('asin') || name.includes('jambal') || name.includes('peda');
+    case 'Sambal':
+      return rawCat.includes('sambal') || name.includes('sambal');
+    case 'Jengkol Pete':
+      return name.includes('jengkol') || name.includes('pete') || name.includes('petai');
+    case 'Minuman':
+      return rawCat.includes('minum') || rawCat.includes('jus') || name.startsWith('es ') ||
+             name.includes('es ') || name.includes('jus') || name.includes('teh') ||
+             name.includes('kopi') || name.includes('jeruk') || name.includes('kelapa') ||
+             name.includes('mineral') || name.includes('aqua') || name.includes('soda');
+    case 'Paket Berlima':
+      return rawCat.includes('paket') || rawCat.includes('berlima') || name.includes('paket') || name.includes('berlima');
+    case 'Ongkir':
+      return name.includes('ongkir') || name.includes('gosend') || name.includes('grab') ||
+             name.includes('box') || Boolean(item.isCustom);
+    default:
+      return true;
+  }
+}
 
 /* --------------------------------------------------------------------------
    Data Menu Dinamis & Realtime dari Koleksi Firestore "menus"
@@ -398,16 +475,17 @@ function renderCategories() {
   if (!dom.categoriesContainer) return;
   dom.categoriesContainer.innerHTML = '';
 
-  categoriesList.forEach((cat) => {
+  RESTOQU_CATEGORIES.forEach((catObj) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `pos-category-btn category-btn ${state.activeCategory === cat ? 'active' : ''}`;
-    btn.textContent = cat;
+    const isActive = (state.activeCategory || 'ALL') === catObj.id;
+    btn.className = `pos-category-btn category-btn ${isActive ? 'active' : ''}`;
+    btn.textContent = catObj.label;
     btn.setAttribute('role', 'tab');
-    btn.setAttribute('aria-selected', state.activeCategory === cat ? 'true' : 'false');
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
 
     btn.addEventListener('click', () => {
-      state.activeCategory = cat;
+      state.activeCategory = catObj.id;
       renderCategories();
       renderMenuGrid();
     });
@@ -423,24 +501,21 @@ function renderMenuGrid() {
 
   let filtered = catalog;
 
-  // Filter Kategori Sesuai Katalog Menu Asli
-  if (state.activeCategory !== 'Semua') {
-    filtered = filtered.filter((item) => {
-      const cat = getMenuPosCategory(item);
-      return cat === state.activeCategory;
-    });
+  // 1. Filter Kategori RestoQu
+  if (state.activeCategory && state.activeCategory !== 'ALL') {
+    filtered = filtered.filter((item) => matchesRestoQuCategory(item, state.activeCategory));
   }
 
-  // Filter Pencarian
+  // 2. Filter Pencarian Cepat
   if (keyword) {
     filtered = filtered.filter((item) => {
       const name = (item.name || '').toLowerCase();
-      const cat = getMenuPosCategory(item).toLowerCase();
+      const cat = (item.category || item.posCategory || '').toLowerCase();
       return name.includes(keyword) || cat.includes(keyword);
     });
   }
 
-  // WAJIB URUT SECARA ALFABETIS A - Z
+  // 3. WAJIB URUT SECARA ALFABETIS A - Z
   filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
 
   if (dom.ojolMenuCount) {
@@ -453,7 +528,7 @@ function renderMenuGrid() {
 
   if (filtered.length === 0) {
     dom.menuGrid.innerHTML = `
-      <div style="text-align: center; padding: 2.5rem 1rem; color: #94a3b8; background: #ffffff; border-radius: 12px; border: 2px dashed #e2e8f0; width: 100%;">
+      <div style="text-align: center; padding: 2.5rem 1rem; color: #94a3b8; background: #ffffff; width: 100%;">
         <span style="font-size: 2.2rem; display: block; margin-bottom: 0.5rem;">🔍</span>
         <p style="font-weight: 700; font-size: 1.1rem; color: #64748b;">Menu tidak ditemukan</p>
       </div>
@@ -461,30 +536,126 @@ function renderMenuGrid() {
     return;
   }
 
-  // SESUAI PERMINTAAN USER: TAMPILAN LIST VIEW 1 BARIS PENUH (100% WIDTH), SANGAT BESAR & JELAS RAMAH LANSIA
+  // RENDER RESTOQU 1:1 COMPACT FLAT LIST (KOMPAK & RAMPING)
   filtered.forEach((item) => {
     const itemPrice = state.isOjol ? (item.goFoodPrice || Math.round(item.price * 1.2)) : item.price;
     const isCustom = Boolean(item.isCustom);
+    const cartItem = state.cart.find((c) => String(c.id) === String(item.id));
+    const cartQty = cartItem ? cartItem.qty : 0;
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `pos-menu-btn menu-item-row menu-list-item ${state.isOjol ? 'ojol-active' : ''} ${isCustom ? 'is-custom-item' : ''}`;
-    btn.setAttribute('title', `Tambah ${item.name} (${formatRupiah(itemPrice)})${isCustom ? ' [Menu Kasir]' : ''}`);
+    const row = document.createElement('div');
+    row.className = `restoqu-menu-row menu-item-row ${cartQty > 0 ? 'in-cart' : ''}`;
+    row.setAttribute('data-id', item.id);
 
-    btn.innerHTML = `
-      <div class="pos-menu-btn-left menu-item-left">
-        <strong class="pos-menu-btn-name menu-item-name">${item.name}</strong>
-        ${isCustom ? '<span style="font-size: 0.78rem; background: #fef3c7; color: #b45309; padding: 3px 8px; border-radius: 6px; font-weight: 700; margin-left: 8px; flex-shrink: 0;">[Manual]</span>' : ''}
+    row.innerHTML = `
+      <div class="restoqu-menu-info">
+        <div class="restoqu-menu-name">
+          ${item.name}
+          ${isCustom ? '<span class="restoqu-badge-custom">[Kasir]</span>' : ''}
+        </div>
+        <div class="restoqu-menu-price">${formatRupiah(itemPrice)}</div>
       </div>
-      <span class="pos-menu-btn-price menu-item-price">${formatRupiah(itemPrice)}</span>
+      <div class="restoqu-menu-action">
+        ${cartQty === 0
+          ? `<button type="button" class="btn-restoqu-add" title="Tambah ${item.name} ke keranjang">+ Tambah</button>`
+          : `<div class="restoqu-qty-control">
+               <button type="button" class="btn-restoqu-qty btn-minus" title="Kurangi 1">−</button>
+               <span class="restoqu-qty-num">${cartQty}</span>
+               <button type="button" class="btn-restoqu-qty btn-plus" title="Tambah 1">+</button>
+             </div>`
+        }
+      </div>
     `;
 
-    btn.addEventListener('click', () => {
-      addItemToCart(item);
-    });
+    // Pasang Event Listeners
+    const btnAdd = row.querySelector('.btn-restoqu-add');
+    if (btnAdd) {
+      btnAdd.addEventListener('click', (e) => {
+        e.stopPropagation();
+        addItemToCart(item);
+      });
+    }
 
-    dom.menuGrid.appendChild(btn);
+    const btnMinus = row.querySelector('.btn-minus');
+    if (btnMinus) {
+      btnMinus.addEventListener('click', (e) => {
+        e.stopPropagation();
+        updateCartItemQtyById(item.id, -1);
+      });
+    }
+
+    const btnPlus = row.querySelector('.btn-plus');
+    if (btnPlus) {
+      btnPlus.addEventListener('click', (e) => {
+        e.stopPropagation();
+        updateCartItemQtyById(item.id, 1);
+      });
+    }
+
+    dom.menuGrid.appendChild(row);
   });
+}
+
+function updateMenuRowsCartQty() {
+  if (!dom.menuGrid) return;
+  const rows = dom.menuGrid.querySelectorAll('.restoqu-menu-row[data-id]');
+  rows.forEach((row) => {
+    const itemId = row.getAttribute('data-id');
+    const cartItem = state.cart.find((c) => String(c.id) === String(itemId));
+    const cartQty = cartItem ? cartItem.qty : 0;
+    const actionEl = row.querySelector('.restoqu-menu-action');
+    if (!actionEl) return;
+
+    row.classList.toggle('in-cart', cartQty > 0);
+
+    if (cartQty === 0) {
+      actionEl.innerHTML = `<button type="button" class="btn-restoqu-add" title="Tambah ke keranjang">+ Tambah</button>`;
+      const btnAdd = actionEl.querySelector('.btn-restoqu-add');
+      if (btnAdd) {
+        btnAdd.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const catalog = getCatalog();
+          const it = catalog.find((i) => String(i.id) === String(itemId));
+          if (it) addItemToCart(it);
+        });
+      }
+    } else {
+      actionEl.innerHTML = `
+        <div class="restoqu-qty-control">
+          <button type="button" class="btn-restoqu-qty btn-minus" title="Kurangi 1">−</button>
+          <span class="restoqu-qty-num">${cartQty}</span>
+          <button type="button" class="btn-restoqu-qty btn-plus" title="Tambah 1">+</button>
+        </div>
+      `;
+      const btnMinus = actionEl.querySelector('.btn-minus');
+      if (btnMinus) {
+        btnMinus.addEventListener('click', (e) => {
+          e.stopPropagation();
+          updateCartItemQtyById(itemId, -1);
+        });
+      }
+      const btnPlus = actionEl.querySelector('.btn-plus');
+      if (btnPlus) {
+        btnPlus.addEventListener('click', (e) => {
+          e.stopPropagation();
+          updateCartItemQtyById(itemId, 1);
+        });
+      }
+    }
+  });
+}
+
+function updateCartItemQtyById(itemId, delta) {
+  const index = state.cart.findIndex((c) => String(c.id) === String(itemId));
+  if (index > -1) {
+    updateCartItemQty(index, delta);
+  } else if (delta > 0) {
+    const catalog = getCatalog();
+    const menuItem = catalog.find((i) => String(i.id) === String(itemId));
+    if (menuItem) {
+      addItemToCart(menuItem);
+    }
+  }
 }
 
 function addItemToCart(menuItem) {
@@ -556,6 +727,17 @@ function syncCartPricesWithMode() {
   renderCart();
 }
 
+function handleFloatingCheckoutClick() {
+  // Arahkan tampilan langsung ke Panel Keranjang & Checkout
+  const cartPanel = document.querySelector('.pos-cart-panel');
+  if (cartPanel) {
+    cartPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  if (dom.tableSelect) {
+    dom.tableSelect.focus();
+  }
+}
+
 function renderCart() {
   if (!dom.cartItemsContainer) return;
 
@@ -564,6 +746,24 @@ function renderCart() {
 
   if (dom.cartCountBadge) dom.cartCountBadge.textContent = `${totalItems} Item`;
   if (dom.cartTotal) dom.cartTotal.textContent = formatRupiah(totalHarga);
+
+  // Update Floating Checkout Bar RestoQu
+  const floatingBar = dom.floatingCheckoutBar || document.getElementById('floating-checkout-bar');
+  const floatingText = dom.floatingCheckoutSummary || document.getElementById('floating-checkout-summary');
+
+  if (floatingBar) {
+    if (state.cart.length > 0 && state.activeTab === 'pane-input') {
+      floatingBar.style.setProperty('display', 'flex', 'important');
+      if (floatingText) {
+        floatingText.textContent = `${totalItems} item | ${formatRupiah(totalHarga)}`;
+      }
+    } else {
+      floatingBar.style.setProperty('display', 'none', 'important');
+    }
+  }
+
+  // Update sinkronisasi tombol Tambah / Qty stepper pada baris-baris menu
+  updateMenuRowsCartQty();
 
   if (state.cart.length === 0) {
     dom.cartItemsContainer.innerHTML = `
@@ -2011,6 +2211,14 @@ function init() {
 
   // Tombol X Tutup / Batal pada Header Katalog Menu (kembali ke Kasir)
   if (dom.btnCloseInputPane) dom.btnCloseInputPane.addEventListener('click', () => switchTab('pane-tagihan'));
+
+  // Floating Checkout Bar RestoQu Events
+  if (dom.btnFloatingCheckout) dom.btnFloatingCheckout.addEventListener('click', handleFloatingCheckoutClick);
+  if (dom.floatingCheckoutBar) dom.floatingCheckoutBar.addEventListener('click', (e) => {
+    if (dom.btnFloatingCheckout && !dom.btnFloatingCheckout.contains(e.target)) {
+      handleFloatingCheckoutClick();
+    }
+  });
 
   // Tabs Nav Legacy Events
   if (dom.tabBtnInput) dom.tabBtnInput.addEventListener('click', () => switchTab('pane-input'));
