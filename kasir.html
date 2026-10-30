@@ -380,7 +380,7 @@
   </div>
 
   <!-- Modal Edit Pesanan (Ubah Qty & Hapus Item Belum Lunas) -->
-  <div id="edit-order-modal" class="pos-modal-overlay" style="display: none;">
+  <div id="modal-edit-pesanan" class="pos-modal-overlay" style="display: none;">
     <div class="pos-modal-box edit-order-modal-box">
       <header class="pos-modal-header">
         <div>
@@ -412,6 +412,46 @@
           💾 Simpan Perubahan Pesanan
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Konfirmasi Sukses Pembayaran & Cetak Struk Pasca-Bayar -->
+  <div id="modal-sukses-bayar" class="pos-modal-overlay" style="display: none;">
+    <div class="pos-modal-box modal-sukses-box">
+      <header class="modal-sukses-header">
+        <span class="sukses-icon-badge">✅</span>
+        <h3 class="modal-sukses-title">Pembayaran Berhasil Diterima!</h3>
+        <p class="modal-sukses-sub" id="sukses-transaksi-info">Tagihan meja telah lunas dicatat ke sistem</p>
+      </header>
+      <div class="modal-sukses-body">
+        <div class="sukses-detail-card">
+          <div class="sukses-detail-row">
+            <span>Nomor Meja / Layanan:</span>
+            <strong id="sukses-meja-label">Meja 1</strong>
+          </div>
+          <div class="sukses-detail-row">
+            <span>Metode Pembayaran:</span>
+            <span id="sukses-metode-badge" class="badge-method Tunai">Tunai</span>
+          </div>
+          <div class="sukses-detail-row sukses-row-total">
+            <span>Total Tagihan:</span>
+            <strong id="sukses-total-label" class="sukses-total-val">Rp 0</strong>
+          </div>
+          <div id="sukses-cash-change-row" class="sukses-detail-row" style="display: none;">
+            <span>Kembalian Pelanggan:</span>
+            <strong id="sukses-change-label" style="color: #2563eb;">Rp 0</strong>
+          </div>
+        </div>
+      </div>
+      <footer class="modal-sukses-footer">
+        <button type="button" id="btn-sukses-cetak-struk" class="btn-sukses-cetak">
+          <span>🖨️</span>
+          <span>Cetak Struk Sekarang</span>
+        </button>
+        <button type="button" id="btn-sukses-selesai" class="btn-sukses-selesai">
+          <span>Selesai / Transaksi Baru</span>
+        </button>
+      </footer>
     </div>
   </div>
 

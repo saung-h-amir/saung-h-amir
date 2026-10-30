@@ -1567,7 +1567,36 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-top: 0.35rem;
+}
+
+.rekap-total-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.btn-rekap-reprint {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1.5px solid #86efac;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+.btn-rekap-reprint:hover {
+  background: #dcfce7;
+  border-color: #22c55e;
+  transform: translateY(-1px);
 }
 
 .rekap-card-total-label {
@@ -1598,6 +1627,217 @@ body {
   font-size: 1.05rem;
   font-weight: 700;
   color: #64748b;
+}
+
+/* --------------------------------------------------------------------------
+   STANDARD POS MODAL OVERLAY & BOX (Z-INDEX TINGGI & DI TENGAH LAYAR)
+   -------------------------------------------------------------------------- */
+.pos-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999 !important; /* Tampil di atas seluruh elemen */
+  padding: 1rem;
+}
+
+.pos-modal-box {
+  background: #ffffff;
+  border-radius: 18px;
+  width: 96%;
+  max-width: 580px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1.5px solid #cbd5e1;
+  position: relative;
+  z-index: 1000000 !important;
+  animation: pos-modal-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pos-modal-pop {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.pos-modal-header {
+  padding: 1.15rem 1.35rem;
+  background: #1e293b;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #334155;
+}
+
+.pos-modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.pos-modal-close {
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.pos-modal-close:hover {
+  background: #ef4444;
+  border-color: #dc2626;
+}
+
+.pos-modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+  background: #f8fafc;
+}
+
+/* --------------------------------------------------------------------------
+   MODAL SUKSES PEMBAYARAN & CETAK STRUK PASCA-BAYAR
+   -------------------------------------------------------------------------- */
+.modal-sukses-box {
+  max-width: 480px;
+  text-align: center;
+  border-top: 6px solid #16a34a;
+}
+
+.modal-sukses-header {
+  padding: 1.75rem 1.5rem 1rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sukses-icon-badge {
+  font-size: 3.5rem;
+  line-height: 1;
+  animation: sukses-bounce 0.4s ease;
+}
+
+@keyframes sukses-bounce {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.modal-sukses-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #15803d;
+  margin: 0;
+}
+
+.modal-sukses-sub {
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0;
+}
+
+.modal-sukses-body {
+  padding: 1rem 1.5rem;
+  background: #ffffff;
+}
+
+.sukses-detail-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  text-align: left;
+}
+
+.sukses-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  color: #334155;
+}
+
+.sukses-row-total {
+  border-top: 1.5px dashed #cbd5e1;
+  padding-top: 0.65rem;
+  margin-top: 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sukses-total-val {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #15803d;
+}
+
+.modal-sukses-footer {
+  padding: 1.25rem 1.5rem 1.75rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.btn-sukses-cetak {
+  background: #15803d;
+  color: #ffffff;
+  border: none;
+  padding: 1rem;
+  border-radius: 12px;
+  font-size: 1.15rem; /* Besar & jelas */
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35);
+  transition: all 0.2s;
+}
+
+.btn-sukses-cetak:hover {
+  background: #166534;
+  transform: translateY(-1px);
+}
+
+.btn-sukses-selesai {
+  background: #f1f5f9;
+  color: #334155;
+  border: 2px solid #cbd5e1;
+  padding: 0.85rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-sukses-selesai:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 /* --------------------------------------------------------------------------

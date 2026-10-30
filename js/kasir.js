@@ -138,7 +138,8 @@ const dom = {
   cashierBillsContainer: document.getElementById('cashier-bills-container'),
 
   // Modal Edit Pesanan (Meja Belum Lunas)
-  editOrderModal: document.getElementById('edit-order-modal'),
+  modalEditPesanan: document.getElementById('modal-edit-pesanan') || document.getElementById('edit-order-modal'),
+  editOrderModal: document.getElementById('modal-edit-pesanan') || document.getElementById('edit-order-modal'),
   editOrderModalTitle: document.getElementById('edit-order-modal-title'),
   editOrderModalSub: document.getElementById('edit-order-modal-sub'),
   btnCloseEditOrderModal: document.getElementById('btn-close-edit-order-modal'),
@@ -147,6 +148,17 @@ const dom = {
   editOrderItemsContainer: document.getElementById('edit-order-items-container'),
   editOrderTotalItems: document.getElementById('edit-order-total-items'),
   editOrderNewTotal: document.getElementById('edit-order-new-total'),
+
+  // Modal Sukses Pembayaran & Cetak Struk Pasca-Bayar
+  modalSuksesBayar: document.getElementById('modal-sukses-bayar'),
+  suksesTransaksiInfo: document.getElementById('sukses-transaksi-info'),
+  suksesMejaLabel: document.getElementById('sukses-meja-label'),
+  suksesMetodeBadge: document.getElementById('sukses-metode-badge'),
+  suksesTotalLabel: document.getElementById('sukses-total-label'),
+  suksesCashChangeRow: document.getElementById('sukses-cash-change-row'),
+  suksesChangeLabel: document.getElementById('sukses-change-label'),
+  btnSuksesCetakStruk: document.getElementById('btn-sukses-cetak-struk'),
+  btnSuksesSelesai: document.getElementById('btn-sukses-selesai'),
 
   // Modal Pembayaran Tunai
   cashModal: document.getElementById('cash-modal'),
@@ -840,6 +852,8 @@ function renderCashierBills(groups) {
     card.querySelector('.btn-settle-qris').addEventListener('click', async () => {
       if (confirm(`Konfirmasi pelunasan tagihan ${displayTitle} (${formatRupiah(group.totalHarga)}) via QRIS?`)) {
         await settleTableBill(group, 'QRIS', group.totalHarga, 0);
+        showToast(`Pembayaran QRIS ${displayTitle} Berhasil!`, 'success');
+        openPaymentSuccessModal(group, mergedItems, 'QRIS', group.totalHarga, 0);
       }
     });
 
@@ -847,6 +861,8 @@ function renderCashierBills(groups) {
     card.querySelector('.btn-settle-debit').addEventListener('click', async () => {
       if (confirm(`Konfirmasi pelunasan tagihan ${displayTitle} (${formatRupiah(group.totalHarga)}) via Debit?`)) {
         await settleTableBill(group, 'Debit', group.totalHarga, 0);
+        showToast(`Pembayaran Debit ${displayTitle} Berhasil!`, 'success');
+        openPaymentSuccessModal(group, mergedItems, 'Debit', group.totalHarga, 0);
       }
     });
 
@@ -894,15 +910,17 @@ function openEditOrderModal(group) {
 
   renderEditOrderModal();
 
-  if (dom.editOrderModal) {
-    dom.editOrderModal.style.display = 'flex';
+  const modalEl = dom.modalEditPesanan || dom.editOrderModal || document.getElementById('modal-edit-pesanan');
+  if (modalEl) {
+    modalEl.style.display = 'flex';
     document.body.style.overflow = 'hidden';
   }
 }
 
 function closeEditOrderModal() {
-  if (dom.editOrderModal) {
-    dom.editOrderModal.style.display = 'none';
+  const modalEl = dom.modalEditPesanan || dom.editOrderModal || document.getElementById('modal-edit-pesanan');
+  if (modalEl) {
+    modalEl.style.display = 'none';
     document.body.style.overflow = '';
   }
   activeEditingGroup = null;
@@ -1179,12 +1197,8 @@ async function processCashPayment() {
     closeCashModalHandler();
     showToast(`✅ Pembayaran Tunai ${group.nomorMeja} Lunas! Kembalian: ${formatRupiah(change)}`, 'success');
 
-    // Tawarkan cetak struk
-    setTimeout(() => {
-      if (confirm('Cetak Struk Pembayaran Konsumen sekarang?')) {
-        printCustomerReceipt(group, mergedItems, received, change);
-      }
-    }, 200);
+    // Buka Modal Sukses & Opsi Cetak Struk Pasca-Bayar
+    openPaymentSuccessModal(group, mergedItems, 'Tunai', received, change);
 
   } catch (err) {
     console.error('Gagal memproses pembayaran tunai:', err);
@@ -1212,6 +1226,47 @@ async function settleTableBill(group, paymentMethod, cashReceived = 0, changeAmo
   });
 
   await batch.commit();
+}
+
+/* --------------------------------------------------------------------------
+   5b. MODAL SUKSES PEMBAYARAN & CETAK STRUK PASCA-BAYAR
+   -------------------------------------------------------------------------- */
+let activePaymentSuccessData = null;
+
+function openPaymentSuccessModal(group, mergedItems, paymentMethod, cashReceived = null, changeAmount = null) {
+  if (!dom.modalSuksesBayar) return;
+  activePaymentSuccessData = { group, mergedItems, paymentMethod, cashReceived, changeAmount };
+
+  const displayTitle = group.isOjol
+    ? `GoFood (${group.kodeOjol || group.kodeReferensi || 'Driver'})`
+    : (group.nomorMeja || 'Take-Away');
+
+  if (dom.suksesMejaLabel) {
+    dom.suksesMejaLabel.textContent = displayTitle;
+  }
+  if (dom.suksesMetodeBadge) {
+    dom.suksesMetodeBadge.textContent = paymentMethod;
+    dom.suksesMetodeBadge.className = `badge-method ${paymentMethod}`;
+  }
+  if (dom.suksesTotalLabel) {
+    dom.suksesTotalLabel.textContent = formatRupiah(group.totalHarga);
+  }
+
+  if (paymentMethod === 'Tunai' && cashReceived !== null) {
+    if (dom.suksesCashChangeRow) dom.suksesCashChangeRow.style.display = 'flex';
+    if (dom.suksesChangeLabel) dom.suksesChangeLabel.textContent = formatRupiah(changeAmount || 0);
+  } else {
+    if (dom.suksesCashChangeRow) dom.suksesCashChangeRow.style.display = 'none';
+  }
+
+  dom.modalSuksesBayar.style.display = 'flex';
+}
+
+function closePaymentSuccessModal() {
+  if (dom.modalSuksesBayar) {
+    dom.modalSuksesBayar.style.display = 'none';
+  }
+  activePaymentSuccessData = null;
 }
 
 /* --------------------------------------------------------------------------
@@ -1397,12 +1452,45 @@ function calculateAndRenderRekap(orders, startStr, endStr) {
         </div>
 
         <div class="rekap-card-bottom">
-          <span class="rekap-card-total-label">Total Tagihan:</span>
-          <strong class="rekap-card-total-value">${formatRupiah(o.totalHarga)}</strong>
+          <div class="rekap-total-wrap">
+            <span class="rekap-card-total-label">Total Tagihan:</span>
+            <strong class="rekap-card-total-value">${formatRupiah(o.totalHarga)}</strong>
+          </div>
+          <button type="button" class="btn-rekap-reprint" data-idx="${idx}" title="Cetak ulang struk pembayaran transaksi ini">
+            <span>🖨️</span>
+            <span>Cetak Ulang Struk</span>
+          </button>
         </div>
       </div>
     `;
   }).join('');
+
+  // Pasang event listener tombol Cetak Ulang Struk di setiap kartu
+  container.querySelectorAll('.btn-rekap-reprint').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      const o = orders[idx];
+      if (!o) return;
+
+      const group = {
+        nomorMeja: o.nomorMeja || 'Take-Away',
+        isOjol: Boolean(o.isOjol),
+        kodeOjol: o.kodeOjol || o.kodeReferensi || '',
+        totalHarga: Number(o.totalHarga) || 0
+      };
+
+      const mergedItems = (o.items || []).map((it) => ({
+        name: it.name || it.nama || 'Menu',
+        qty: Number(it.qty) || 1,
+        price: Number(it.price) || 0,
+        subtotal: Number(it.subtotal || ((it.qty || 1) * (it.price || 0))),
+        note: it.note || ''
+      }));
+
+      printCustomerReceipt(group, mergedItems, o.cashReceived || null, o.changeAmount || null);
+    });
+  });
 }
 
 function downloadFilteredCsv() {
@@ -1530,8 +1618,7 @@ function formatThermalReceiptText(group, mergedItems, cashReceived = null, chang
   }
 
   lines.push(dblLine);
-  lines.push(center('Hatur Nuhun Sumpingna!'));
-  lines.push(center('Selamat Menikmati Hidangan'));
+  lines.push(center('Hatur Nuhun'));
   lines.push(dblLine);
   lines.push('\n');
 
@@ -1943,6 +2030,24 @@ function init() {
   if (dom.editOrderModal) {
     dom.editOrderModal.addEventListener('click', (e) => {
       if (e.target === dom.editOrderModal) closeEditOrderModal();
+    });
+  }
+
+  // Modal Sukses Bayar & Cetak Struk Pasca-Bayar Events
+  if (dom.btnSuksesCetakStruk) {
+    dom.btnSuksesCetakStruk.addEventListener('click', () => {
+      if (activePaymentSuccessData) {
+        const { group, mergedItems, cashReceived, changeAmount } = activePaymentSuccessData;
+        printCustomerReceipt(group, mergedItems, cashReceived, changeAmount);
+      }
+    });
+  }
+  if (dom.btnSuksesSelesai) {
+    dom.btnSuksesSelesai.addEventListener('click', closePaymentSuccessModal);
+  }
+  if (dom.modalSuksesBayar) {
+    dom.modalSuksesBayar.addEventListener('click', (e) => {
+      if (e.target === dom.modalSuksesBayar) closePaymentSuccessModal();
     });
   }
 
