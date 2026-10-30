@@ -2276,16 +2276,31 @@ body {
 /* --------------------------------------------------------------------------
    MODAL LAYAR PENUH REKAP PEMASUKAN
    -------------------------------------------------------------------------- */
-.rekap-modal-overlay {
+.rekap-modal-overlay,
+#rekap-modal {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(6px);
   z-index: 99999;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 1rem;
+}
+
+.rekap-modal-overlay.active,
+.rekap-modal-overlay.is-open,
+#rekap-modal.active,
+#rekap-modal.is-open {
+  display: flex !important;
+}
+
+.rekap-modal-overlay.hidden,
+#rekap-modal.hidden,
+.rekap-modal-overlay[style*="display: none"],
+#rekap-modal[style*="display: none"] {
+  display: none !important;
 }
 
 .rekap-modal-box {
@@ -2520,23 +2535,36 @@ body.alarm-flash-active .pos-header {
      1. MODAL REKAP PEMASUKAN LAYAR HP (FULL VIEWPORT & SMOOTH SCROLLING)
      -------------------------------------------------------------------------- */
   #rekap-modal,
-  #modal-rekap,
-  .rekap-modal-overlay,
-  .modal-overlay {
+  .rekap-modal-overlay {
     padding: 0 !important;
     position: fixed !important;
     inset: 0 !important;
     z-index: 99999 !important;
-    display: flex !important;
     flex-direction: column !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    display: none;
+  }
+
+  /* Modal Rekap di layar HP HANYA flex jika dibuka secara aktif */
+  #rekap-modal.active,
+  #rekap-modal.is-open,
+  .rekap-modal-overlay.active,
+  .rekap-modal-overlay.is-open {
+    display: flex !important;
+  }
+
+  /* Kunci mati modal tersembunyi pada layar HP */
+  #rekap-modal.hidden,
+  .rekap-modal-overlay.hidden,
+  #rekap-modal[style*="display: none"],
+  .rekap-modal-overlay[style*="display: none"] {
+    display: none !important;
   }
 
   .rekap-modal-box,
-  .modal-content,
-  #rekap-modal .rekap-modal-box,
-  #modal-rekap .modal-content {
+  #modal-rekap,
+  #rekap-modal .rekap-modal-box {
     max-height: 100% !important;
     height: 100% !important;
     min-height: 100% !important;

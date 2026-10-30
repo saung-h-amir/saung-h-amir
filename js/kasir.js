@@ -96,9 +96,9 @@ const dom = {
   badgeRekapTotal: document.getElementById('badge-rekap-total'),
 
   // Tombol & Modal Rekap Pemasukan Layar Penuh
-  btnOpenRekapModal: document.getElementById('btn-open-rekap-modal'),
-  rekapModal: document.getElementById('rekap-modal'),
-  btnCloseRekapModal: document.getElementById('btn-close-rekap-modal'),
+  btnOpenRekapModal: document.getElementById('btn-open-rekap-modal') || document.getElementById('btn-open-rekap'),
+  rekapModal: document.getElementById('rekap-modal') || document.getElementById('modal-rekap'),
+  btnCloseRekapModal: document.getElementById('btn-close-rekap-modal') || document.getElementById('btn-close-rekap'),
 
   // Banner Peringatan Raksasa & Alarm Sirine
   newOrderAlarmOverlay: document.getElementById('new-order-alarm-overlay'),
@@ -289,18 +289,32 @@ function switchTab(tabId) {
 }
 
 function openRekapModal() {
-  if (dom.rekapModal) {
-    dom.rekapModal.style.display = 'flex';
+  const modal = dom.rekapModal || document.getElementById('rekap-modal') || document.getElementById('modal-rekap');
+  if (modal) {
+    modal.classList.add('active', 'is-open');
+    modal.classList.remove('hidden');
+    modal.style.setProperty('display', 'flex', 'important');
     document.body.style.overflow = 'hidden';
   }
 }
 
 function closeRekapModal() {
-  if (dom.rekapModal) {
-    dom.rekapModal.style.display = 'none';
+  const modal = dom.rekapModal || document.getElementById('rekap-modal') || document.getElementById('modal-rekap');
+  if (modal) {
+    modal.classList.remove('active', 'is-open');
+    modal.classList.add('hidden');
+    modal.style.setProperty('display', 'none', 'important');
     document.body.style.overflow = '';
   }
 }
+
+// Window helper aliases agar bisa diakses secara global jika dibutuhkan
+window.openRekapModal = openRekapModal;
+window.closeRekapModal = closeRekapModal;
+window.bukaModalRekap = openRekapModal;
+window.tutupModalRekap = closeRekapModal;
+window.showRekap = openRekapModal;
+window.hideRekap = closeRekapModal;
 
 /* --------------------------------------------------------------------------
    3. TAB 1: INPUT PESANAN (MENU LIST VIEW 1 BARIS BESAR - A SAMPAI Z)
@@ -1949,6 +1963,13 @@ function setupNewOrderAlarmListener() {
    -------------------------------------------------------------------------- */
 function init() {
   checkAuth();
+
+  // Pastikan Tab 1 (Input Pesanan) aktif secara default saat kasir dibuka
+  switchTab('pane-input');
+
+  // Pastikan Modal Rekap terkunci tertutup secara default
+  closeRekapModal();
+
   renderCategories();
   renderMenuGrid();
   renderCart();
@@ -1964,14 +1985,40 @@ function init() {
   if (dom.tabBtnInput) dom.tabBtnInput.addEventListener('click', () => switchTab('pane-input'));
   if (dom.tabBtnTagihan) dom.tabBtnTagihan.addEventListener('click', () => switchTab('pane-tagihan'));
 
-  // Header Rekap Modal Pop-up Events
-  if (dom.btnOpenRekapModal) dom.btnOpenRekapModal.addEventListener('click', openRekapModal);
-  if (dom.btnCloseRekapModal) dom.btnCloseRekapModal.addEventListener('click', closeRekapModal);
-  if (dom.rekapModal) {
-    dom.rekapModal.addEventListener('click', (e) => {
-      if (e.target === dom.rekapModal) closeRekapModal();
+  // Header Rekap Modal Pop-up Events (Dukungan tombol header & penutup modal)
+  const openRekapBtns = [
+    dom.btnOpenRekapModal,
+    document.getElementById('btn-open-rekap')
+  ];
+  openRekapBtns.forEach((btn) => {
+    if (btn) btn.addEventListener('click', openRekapModal);
+  });
+
+  const closeRekapBtns = [
+    dom.btnCloseRekapModal,
+    document.getElementById('btn-close-rekap'),
+    ...document.querySelectorAll('.rekap-modal-close-btn, .btn-close-rekap')
+  ];
+  closeRekapBtns.forEach((btn) => {
+    if (btn) btn.addEventListener('click', closeRekapModal);
+  });
+
+  const modalEl = dom.rekapModal || document.getElementById('rekap-modal') || document.getElementById('modal-rekap');
+  if (modalEl) {
+    modalEl.addEventListener('click', (e) => {
+      if (e.target === modalEl) closeRekapModal();
     });
   }
+
+  // Tombol Escape keyboard untuk menutup modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const m = dom.rekapModal || document.getElementById('rekap-modal');
+      if (m && (m.classList.contains('active') || m.style.display !== 'none')) {
+        closeRekapModal();
+      }
+    }
+  });
 
   // Tombol Matikan Alarm Sirine Pesanan Baru
   if (dom.btnStopAlarm) {
