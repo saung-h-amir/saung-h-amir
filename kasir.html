@@ -58,9 +58,9 @@
 
     <!-- Tombol Pintas Header: Rekap Pemasukan Layar Penuh & Tautan Eksternal -->
     <div class="pos-header-actions">
-      <button type="button" id="btn-open-rekap-modal" class="pos-header-rekap-btn" title="Buka Rekap Pemasukan">
+      <button type="button" id="btn-open-rekap-modal" class="pos-header-rekap-btn" title="Buka Layar Penuh Rekap Pemasukan">
         <span class="rekap-btn-icon">📊</span>
-        <span>Rekap Pemasukan</span>
+        <span>Lihat Rekap Pemasukan</span>
         <span id="badge-rekap-total" class="header-rekap-badge">Rp 0</span>
       </button>
       <a href="dapur.html" class="pos-nav-link" target="_blank" rel="noopener" title="Buka Layar Antrean Dapur Koki">
@@ -296,12 +296,12 @@
             </div>
           </div>
 
-          <!-- Tabel Riwayat Transaksi Sesuai Rentang Waktu & Download CSV/Excel -->
-          <div class="rekap-table-card">
-            <div class="rekap-table-header">
+          <!-- Riwayat Transaksi Card View (Daftar Kartu Bertumpuk ala M-Banking) -->
+          <div class="rekap-card-view-section">
+            <div class="rekap-cards-header">
               <div>
-                <h3 style="font-size: 1.1rem; font-weight: 800; color: #0f172a;" id="rekap-table-title">Daftar Transaksi Lunas</h3>
-                <span style="font-size: 0.78rem; color: #64748b;" id="rekap-range-label">Menampilkan data hari ini</span>
+                <h3 class="rekap-section-title" id="rekap-table-title">Daftar Transaksi Lunas</h3>
+                <span class="rekap-section-sub" id="rekap-range-label">Menampilkan data hari ini</span>
               </div>
               <button type="button" id="btn-download-csv" class="btn-download-csv">
                 <span aria-hidden="true">📥</span>
@@ -309,26 +309,12 @@
               </button>
             </div>
 
-            <div class="rekap-table-wrap">
-              <table class="rekap-table">
-                <thead>
-                  <tr>
-                    <th>No</th>
-                    <th>Waktu Transaksi</th>
-                    <th>Meja / Layanan</th>
-                    <th>Menu Pesanan</th>
-                    <th>Metode</th>
-                    <th style="text-align: right;">Total Tagihan</th>
-                  </tr>
-                </thead>
-                <tbody id="rekap-table-body">
-                  <tr>
-                    <td colspan="6" style="text-align: center; color: #94a3b8; padding: 2rem;">
-                      Tidak ada transaksi tercatat pada rentang tanggal ini.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <!-- Daftar Kartu Transaksi M-Banking -->
+            <div id="rekap-cards-container" class="rekap-cards-container">
+              <div class="rekap-empty-state">
+                <span class="rekap-empty-icon">🧾</span>
+                <p>Tidak ada transaksi tercatat pada rentang tanggal ini.</p>
+              </div>
             </div>
           </div>
 
@@ -393,19 +379,19 @@
     </div>
   </div>
 
-  <!-- Modal Tambah Menu Baru Khusus Kasir POS -->
+  <!-- Modal Tambah Menu Baru (Database Firestore) -->
   <div id="custom-menu-modal" class="pos-modal-overlay" style="display: none;">
     <div class="pos-modal-box custom-menu-modal-box">
       <header class="pos-modal-header">
-        <h3 class="pos-modal-title">➕ Tambah Menu Baru Kasir</h3>
+        <h3 class="pos-modal-title">➕ Tambah Menu Baru (Database Firestore)</h3>
         <button type="button" id="btn-close-custom-menu-modal" class="pos-modal-close" title="Tutup">✕</button>
       </header>
       <div class="pos-modal-body">
-        <p class="custom-menu-hint">Menu ini tersimpan khusus di Kasir POS Anda (misal: <em>Nasi Box, Ongkir Gosend, Bakwan 1/5, Tambahan Lauk, dll</em>).</p>
+        <p class="custom-menu-hint">Menu ini tersimpan permanen di database Firestore (otomatis tampil di Kasir dan Web Pelanggan tanpa hilang saat refresh).</p>
         <form id="custom-menu-form" onsubmit="return false;">
           <div class="pos-control-group" style="margin-bottom: 0.85rem;">
             <label for="custom-menu-name" class="pos-control-label">Nama Menu / Item <span class="required" style="color: #ef4444;">*</span></label>
-            <input type="text" id="custom-menu-name" class="pos-form-input" placeholder="Contoh: Nasi Box Ayam Bakar, Ongkir Gosend..." required autocomplete="off">
+            <input type="text" id="custom-menu-name" class="pos-form-input" placeholder="Contoh: Nasi Box Ayam Bakar, Ongkir Gosend, Bakwan 1/5..." required autocomplete="off">
           </div>
           <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.85rem;">
             <div class="pos-control-group">
@@ -429,17 +415,17 @@
             <input type="number" id="custom-menu-gofood-price" class="pos-form-input" min="0" step="500" placeholder="Kosongkan jika sama dengan harga reguler">
           </div>
           <button type="submit" id="btn-save-custom-menu" class="btn-save-custom-menu">
-            💾 Simpan ke Menu Kasir
+            💾 Simpan ke Database Menu
           </button>
         </form>
 
-        <!-- Daftar Menu Tambahan Kasir yang Sudah Tersimpan -->
+        <!-- Daftar Menu Tambahan Kasir yang Sudah Tersimpan di Firestore -->
         <div class="custom-menu-list-section">
           <div class="custom-menu-list-header">
-            <strong>📋 Menu Tambahan Tersimpan (<span id="custom-menu-count">0</span>)</strong>
+            <strong>📋 Menu Tambahan di Database (<span id="custom-menu-count">0</span>)</strong>
           </div>
           <div id="custom-menu-list-items" class="custom-menu-list-items">
-            <p style="font-size: 0.82rem; color: #94a3b8; text-align: center; padding: 0.75rem;">Belum ada menu tambahan kasir.</p>
+            <p style="font-size: 0.82rem; color: #94a3b8; text-align: center; padding: 0.75rem;">Belum ada menu tambahan kasir tersimpan.</p>
           </div>
         </div>
       </div>

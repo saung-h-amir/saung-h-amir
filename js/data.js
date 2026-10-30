@@ -1,3 +1,11 @@
+import {
+  collection,
+  getDocs,
+  writeBatch,
+  doc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+
 export const MAIN_TABS = [
   {
     id: 'makanan',
@@ -2028,10 +2036,60 @@ export const menuData = [
 export const PRODUCTS = menuData;
 export default menuData;
 
+/* --------------------------------------------------------------------------
+   Fungsi Bantuan Migrasi Menu Statis ke Koleksi Firestore "menus"
+   -------------------------------------------------------------------------- */
+export async function migrateMenusToFirestore(db, force = false) {
+  if (!db) {
+    console.error('[Migrasi] Database Firestore (db) belum diinisialisasi.');
+    return { success: false, message: 'Instance db Firestore tidak ditemukan' };
+  }
+  try {
+    const menusCol = collection(db, 'menus');
+    if (!force) {
+      const existingSnap = await getDocs(menusCol);
+      if (!existingSnap.empty) {
+        console.log(`[Migrasi] Koleksi 'menus' sudah memiliki ${existingSnap.size} data. Migrasi awal dilewati.`);
+        return { success: true, count: existingSnap.size, alreadyMigrated: true };
+      }
+    }
+
+    console.log(`[Migrasi] Memulai migrasi ${menuData.length} menu bawaan ke koleksi Firestore 'menus'...`);
+    const BATCH_SIZE = 450;
+    let totalMigrated = 0;
+
+    for (let i = 0; i < menuData.length; i += BATCH_SIZE) {
+      const chunk = menuData.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(db);
+
+      chunk.forEach((item) => {
+        const docRef = item.id ? doc(menusCol, String(item.id)) : doc(menusCol);
+        batch.set(docRef, {
+          ...item,
+          id: docRef.id,
+          posCategory: item.posCategory || getMenuPosCategory(item),
+          updatedAt: serverTimestamp()
+        });
+      });
+
+      await batch.commit();
+      totalMigrated += chunk.length;
+      console.log(`[Migrasi] Batch ${Math.floor(i / BATCH_SIZE) + 1} selesai (${totalMigrated}/${menuData.length} menu).`);
+    }
+
+    console.log(`[Migrasi] Sukses memindahkan total ${totalMigrated} menu ke koleksi 'menus' di Firestore!`);
+    return { success: true, count: totalMigrated };
+  } catch (err) {
+    console.error('[Migrasi] Terjadi kesalahan saat migrasi menu ke Firestore:', err);
+    return { success: false, error: err };
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.menuData = menuData;
   window.PRODUCTS = menuData;
   window.MAIN_TABS = MAIN_TABS;
   window.CATEGORIES = CATEGORIES;
   window.POS_CATEGORIES = POS_CATEGORIES;
+  window.migrateMenusToFirestore = migrateMenusToFirestore;
 }

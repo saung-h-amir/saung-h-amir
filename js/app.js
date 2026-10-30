@@ -1,4 +1,4 @@
-import { menuData, MAIN_TABS, CATEGORIES } from './data.js';
+import { menuData, MAIN_TABS, CATEGORIES, migrateMenusToFirestore } from './data.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import {
   getFirestore,
@@ -27,7 +27,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const PRODUCTS = menuData;
+// Data menu dinamis dari Firestore (fallback awal menggunakan menuData bawaan)
+let PRODUCTS = [...menuData];
 
 // Format Rupiah
 const currencyFormatter = new Intl.NumberFormat('id-ID', {
@@ -532,18 +533,28 @@ function initApp() {
     function getFilteredProducts() {
       const query = state.searchQuery.trim().toLowerCase();
 
-      return PRODUCTS.filter((product) => {
+      const filtered = PRODUCTS.filter((product) => {
+        const pType = product.type || (
+          (product.posCategory === 'Minuman' || (product.category || '').toLowerCase().includes('minum'))
+            ? 'drink'
+            : ((product.posCategory === 'Sambal' || (product.category || '').toLowerCase().includes('sambal'))
+              ? 'sambal'
+              : ((product.posCategory === 'Paket' || (product.category || '').toLowerCase().includes('berlima'))
+                ? 'package'
+                : 'food'))
+        );
+
         // Tab Filtering
         let matchesTab = false;
         if (state.activeTab === 'berlima') {
-          matchesTab = product.type === 'package';
+          matchesTab = pType === 'package';
         } else if (state.activeTab === 'minuman') {
-          matchesTab = product.type === 'drink';
+          matchesTab = pType === 'drink';
         } else if (state.activeTab === 'sambal') {
-          matchesTab = product.type === 'sambal';
+          matchesTab = pType === 'sambal';
         } else {
           // 'makanan' tab: includes all food
-          matchesTab = product.type === 'food';
+          matchesTab = pType === 'food';
         }
 
         // Subcategory Filtering
@@ -551,31 +562,39 @@ function initApp() {
         if (state.selectedCategory !== 'Semua' && !state.selectedCategory.startsWith('Semua')) {
           if (state.activeTab === 'minuman') {
             if (state.selectedCategory === 'Jus Buah Segar') {
-              matchesCategory = product.name.toLowerCase().includes('jus');
+              matchesCategory = (product.name || '').toLowerCase().includes('jus');
             } else if (state.selectedCategory === 'Es & Jeruk Segar') {
               matchesCategory =
-                product.name.toLowerCase().includes('es') ||
-                product.name.toLowerCase().includes('jeruk');
+                (product.name || '').toLowerCase().includes('es') ||
+                (product.name || '').toLowerCase().includes('jeruk');
             } else if (state.selectedCategory === 'Teh & Kopi') {
               matchesCategory =
-                product.name.toLowerCase().includes('teh') ||
-                product.name.toLowerCase().includes('kopi') ||
-                product.name.toLowerCase().includes('mineral');
+                (product.name || '').toLowerCase().includes('teh') ||
+                (product.name || '').toLowerCase().includes('kopi') ||
+                (product.name || '').toLowerCase().includes('mineral');
             }
           } else {
-            matchesCategory = product.category === state.selectedCategory;
+            matchesCategory =
+              product.category === state.selectedCategory ||
+              product.posCategory === state.selectedCategory;
           }
         }
 
         // Search Query Filtering
         const matchesSearch =
           !query ||
-          product.name.toLowerCase().includes(query) ||
-          product.description.toLowerCase().includes(query) ||
-          product.category.toLowerCase().includes(query);
+          (product.name || '').toLowerCase().includes(query) ||
+          (product.description || '').toLowerCase().includes(query) ||
+          (product.category || '').toLowerCase().includes(query) ||
+          (product.posCategory || '').toLowerCase().includes(query);
 
         return matchesTab && matchesCategory && matchesSearch;
       });
+
+      // WAJIB URUT SECARA ALFABETIS A - Z
+      filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
+
+      return filtered;
     }
 
     function syncCatalogAddButtons() {
@@ -2080,11 +2099,32 @@ function initApp() {
       };
     }
 
+    function setupRealtimeMenusListener() {
+      const menusCol = collection(db, 'menus');
+      onSnapshot(menusCol, (snapshot) => {
+        if (snapshot.empty) {
+          console.log('[Pelanggan] Koleksi menus di Firestore kosong. Tetap memakai menu default.');
+          return;
+        }
+        const firestoreMenus = [];
+        snapshot.forEach((docSnap) => {
+          firestoreMenus.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        firestoreMenus.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
+        PRODUCTS = firestoreMenus;
+        renderCatalog();
+        renderCart();
+      }, (err) => {
+        console.warn('[Pelanggan] Gagal membaca koleksi menus dari Firestore:', err);
+      });
+    }
+
     renderTabs();
     renderCategories();
     renderCatalog();
     renderCart();
     initEvents();
+    setupRealtimeMenusListener();
   }
 
   // Jalankan ketika DOM sudah siap

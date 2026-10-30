@@ -3,7 +3,7 @@
  * File: js/kasir.js
  */
 
-import { menuData, POS_CATEGORIES, getMenuPosCategory } from './data.js';
+import { menuData, POS_CATEGORIES, getMenuPosCategory, migrateMenusToFirestore } from './data.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import {
   getFirestore,
@@ -14,6 +14,7 @@ import {
   where,
   updateDoc,
   doc,
+  deleteDoc,
   writeBatch,
   serverTimestamp,
   getDocs,
@@ -67,6 +68,8 @@ const state = {
   searchKeyword: '',
   isOjol: false,
   cart: [],
+  firestoreMenus: [...menuData],
+  isMenusLoaded: false,
   // Rekap Date Filter State
   rekapFilter: {
     preset: 'today',
@@ -161,7 +164,7 @@ const dom = {
   kpiTotalTransaksi: document.getElementById('kpi-total-transaksi'),
   rekapTableTitle: document.getElementById('rekap-table-title'),
   rekapRangeLabel: document.getElementById('rekap-range-label'),
-  rekapTableBody: document.getElementById('rekap-table-body'),
+  rekapCardsContainer: document.getElementById('rekap-cards-container'),
   btnDownloadCsv: document.getElementById('btn-download-csv'),
 
   // Thermal Print & Toast
@@ -282,34 +285,53 @@ function closeRekapModal() {
 const categoriesList = POS_CATEGORIES;
 
 /* --------------------------------------------------------------------------
-   Custom Menu Management (Disimpan Lokal Khusus Kasir POS)
+   Data Menu Dinamis & Realtime dari Koleksi Firestore "menus"
    -------------------------------------------------------------------------- */
-const CUSTOM_MENU_KEY = 'saha_pos_custom_items';
-
-function loadCustomMenuItems() {
-  try {
-    const raw = localStorage.getItem(CUSTOM_MENU_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.warn('Gagal membaca custom menu dari localStorage:', e);
-    return [];
-  }
-}
-
-function saveCustomMenuItems(items) {
-  try {
-    localStorage.setItem(CUSTOM_MENU_KEY, JSON.stringify(items || []));
-  } catch (e) {
-    console.warn('Gagal menyimpan custom menu ke localStorage:', e);
-  }
-}
+let isMenusMigrationTriggered = false;
 
 function getCatalog() {
-  const custom = loadCustomMenuItems();
-  const all = [...menuData, ...custom];
+  const list = (state.firestoreMenus && state.firestoreMenus.length > 0)
+    ? state.firestoreMenus
+    : menuData;
   // Urutkan A - Z secara permanen
-  all.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
-  return all;
+  return [...list].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
+}
+
+function setupRealtimeMenusListener() {
+  const menusCol = collection(db, 'menus');
+  onSnapshot(menusCol, async (snapshot) => {
+    if (snapshot.empty) {
+      console.log('[Kasir] Koleksi "menus" di Firestore belum ada/kosong.');
+      if (!isMenusMigrationTriggered) {
+        isMenusMigrationTriggered = true;
+        console.log('[Kasir] Memulai migrasi otomatis menu awal ke Firestore...');
+        await migrateMenusToFirestore(db);
+      }
+      return;
+    }
+
+    const firestoreList = [];
+    snapshot.forEach((docSnap) => {
+      firestoreList.push({ id: docSnap.id, ...docSnap.data() });
+    });
+
+    // Urutkan A - Z secara permanen
+    firestoreList.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
+
+    state.firestoreMenus = firestoreList;
+    state.isMenusLoaded = true;
+
+    renderMenuGrid();
+    renderCustomMenuList();
+
+    if (dom.ojolMenuCount) {
+      dom.ojolMenuCount.textContent = state.isOjol
+        ? `${firestoreList.length} Menu (Harga GoFood)`
+        : `${firestoreList.length} Menu`;
+    }
+  }, (err) => {
+    console.warn('[Kasir] Gagal membaca koleksi menus dari Firestore:', err);
+  });
 }
 
 function renderCategories() {
@@ -1055,45 +1077,56 @@ function calculateAndRenderRekap(orders, startStr, endStr) {
 
   if (dom.badgeRekapTotal) dom.badgeRekapTotal.textContent = formatRupiah(grandTotal);
 
-  // Render Tabel
-  if (!dom.rekapTableBody) return;
+  // Render Riwayat Transaksi Card View (Daftar Kartu Bertumpuk ala M-Banking)
+  const container = dom.rekapCardsContainer || dom.rekapTableBody;
+  if (!container) return;
 
   if (orders.length === 0) {
-    dom.rekapTableBody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align: center; color: #94a3b8; padding: 2rem;">
-          Tidak ada transaksi lunas pada rentang tanggal yang dipilih.
-        </td>
-      </tr>
+    container.innerHTML = `
+      <div class="rekap-empty-state">
+        <span class="rekap-empty-icon">🧾</span>
+        <p>Tidak ada transaksi lunas pada rentang tanggal yang dipilih.</p>
+      </div>
     `;
     return;
   }
 
-  dom.rekapTableBody.innerHTML = orders.map((o, idx) => {
+  container.innerHTML = orders.map((o, idx) => {
     const waktu = formatDate(o.paidAt || o.createdAt);
-    const mejaText = o.isOjol
+    const isOjol = Boolean(o.isOjol);
+    const mejaText = isOjol
       ? `🛵 GoFood (${o.kodeOjol || o.kodeReferensi || 'Driver'})`
-      : o.nomorMeja;
+      : (o.nomorMeja || 'Take-Away');
 
     const itemsSummary = (o.items || [])
-      .map((i) => `${i.qty || 1}x ${i.name || i.nama || 'Menu'}`)
-      .join(', ');
+      .map((i) => `${i.qty || 1}x ${i.name || i.nama || 'Menu'}${i.note ? ` [${i.note}]` : ''}`)
+      .join('; ');
 
     const method = o.paymentMethod || 'Tunai';
 
     return `
-      <tr>
-        <td style="color: #94a3b8;">${idx + 1}</td>
-        <td>${waktu}</td>
-        <td><strong>${mejaText}</strong></td>
-        <td style="max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${itemsSummary}">
-          ${itemsSummary}
-        </td>
-        <td><span class="badge-method ${method}">${method}</span></td>
-        <td style="text-align: right; font-weight: 800; color: #15803d;">
-          ${formatRupiah(o.totalHarga)}
-        </td>
-      </tr>
+      <div class="rekap-tx-card">
+        <div class="rekap-card-top">
+          <div class="rekap-card-datetime">
+            <span class="rekap-card-date">📅 ${waktu}</span>
+            <span class="rekap-card-time">Transaksi #${idx + 1}</span>
+          </div>
+          <div class="rekap-card-meta">
+            <span class="rekap-card-table ${isOjol ? 'is-ojol' : ''}">${mejaText}</span>
+            <span class="rekap-card-method-badge ${method}">💳 ${method}</span>
+          </div>
+        </div>
+
+        <div class="rekap-card-body">
+          <div class="rekap-card-menu-label">Pesanan:</div>
+          <div class="rekap-card-items-list">${itemsSummary}</div>
+        </div>
+
+        <div class="rekap-card-bottom">
+          <span class="rekap-card-total-label">Total Tagihan:</span>
+          <strong class="rekap-card-total-value">${formatRupiah(o.totalHarga)}</strong>
+        </div>
+      </div>
     `;
   }).join('');
 }
@@ -1236,7 +1269,7 @@ function closeCustomMenuModal() {
   if (dom.customMenuModal) dom.customMenuModal.style.display = 'none';
 }
 
-function handleSaveCustomMenu(e) {
+async function handleSaveCustomMenu(e) {
   if (e) e.preventDefault();
   const name = (dom.customMenuName ? dom.customMenuName.value : '').trim();
   const category = (dom.customMenuCategory ? dom.customMenuCategory.value : 'Lauk') || 'Lauk';
@@ -1255,51 +1288,70 @@ function handleSaveCustomMenu(e) {
     return;
   }
 
-  const newItem = {
-    id: 'custom-' + Date.now(),
-    name: name,
-    category: category,
-    posCategory: category,
-    customCategory: category,
-    price: price,
-    dailyPrice: price,
-    goFoodPrice: goFoodPrice,
-    availableOnGoFood: true,
-    isCustom: true
-  };
+  const btnSave = document.getElementById('btn-save-custom-menu');
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.textContent = 'Menyimpan ke Firestore...';
+  }
 
-  const existing = loadCustomMenuItems();
-  existing.push(newItem);
-  saveCustomMenuItems(existing);
+  try {
+    const docData = {
+      name: name,
+      category: category,
+      posCategory: category,
+      customCategory: category,
+      type: category === 'Minuman' ? 'drink' : (category === 'Sambal' ? 'sambal' : 'food'),
+      price: price,
+      dailyPrice: price,
+      goFoodPrice: goFoodPrice,
+      availableOnGoFood: true,
+      description: `Menu tambahan kasir: ${name}`,
+      specification: 'Porsi Standar',
+      image: category === 'Minuman' ? 'assets/images/minumanminuman.jpeg' : (category === 'Sambal' ? 'assets/images/sambaldadakan.jpeg' : 'assets/images/ayamgoreng.jpeg'),
+      imageAlt: name,
+      isCustom: true,
+      createdAt: serverTimestamp()
+    };
 
-  // Reset form input
-  if (dom.customMenuName) dom.customMenuName.value = '';
-  if (dom.customMenuPrice) dom.customMenuPrice.value = '';
-  if (dom.customMenuGofoodPrice) dom.customMenuGofoodPrice.value = '';
+    await addDoc(collection(db, 'menus'), docData);
 
-  renderCustomMenuList();
-  renderMenuGrid();
-  showToast(`Menu "${name}" berhasil ditambahkan ke Kasir POS!`, 'success');
+    // Reset form input
+    if (dom.customMenuName) dom.customMenuName.value = '';
+    if (dom.customMenuPrice) dom.customMenuPrice.value = '';
+    if (dom.customMenuGofoodPrice) dom.customMenuGofoodPrice.value = '';
+
+    showToast(`Menu "${name}" berhasil disimpan permanen ke database Firestore!`, 'success');
+  } catch (err) {
+    console.error('Gagal menyimpan menu ke Firestore:', err);
+    alert('Gagal menyimpan menu: ' + (err.message || 'Kesalahan jaringan.'));
+  } finally {
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.textContent = '💾 Simpan ke Database Menu';
+    }
+  }
 }
 
-function deleteCustomMenuItem(id) {
-  const existing = loadCustomMenuItems();
-  const filtered = existing.filter((item) => item.id !== id);
-  saveCustomMenuItems(filtered);
-  renderCustomMenuList();
-  renderMenuGrid();
-  showToast('Menu tambahan kasir berhasil dihapus.', '');
+async function deleteCustomMenuItem(id) {
+  if (!confirm('Hapus menu ini secara permanen dari database Firestore?')) return;
+  try {
+    await deleteDoc(doc(db, 'menus', id));
+    showToast('Menu tambahan berhasil dihapus dari database.', 'success');
+  } catch (err) {
+    console.error('Gagal menghapus menu dari Firestore:', err);
+    alert('Gagal menghapus menu: ' + (err.message || 'Kesalahan jaringan.'));
+  }
 }
 
 function renderCustomMenuList() {
   if (!dom.customMenuListItems) return;
-  const items = loadCustomMenuItems();
+  const items = (state.firestoreMenus || []).filter((item) => Boolean(item.isCustom));
   if (dom.customMenuCount) dom.customMenuCount.textContent = String(items.length);
 
   if (items.length === 0) {
     dom.customMenuListItems.innerHTML = `
       <p style="font-size: 0.82rem; color: #94a3b8; text-align: center; padding: 0.75rem;">
-        Belum ada menu tambahan kasir tersimpan.
+        Belum ada menu tambahan kasir tersimpan di database.
       </p>
     `;
     return;
@@ -1312,7 +1364,7 @@ function renderCustomMenuList() {
         <strong>${item.name}</strong>
         <span style="color: #15803d; font-weight: 700; margin-left: 0.5rem;">${formatRupiah(item.price)}</span>
       </div>
-      <button type="button" class="btn-delete-custom-item" data-id="${item.id}" title="Hapus menu ini">
+      <button type="button" class="btn-delete-custom-item" data-id="${item.id}" title="Hapus menu ini secara permanen">
         🗑️
       </button>
     </div>
@@ -1321,9 +1373,7 @@ function renderCustomMenuList() {
   dom.customMenuListItems.querySelectorAll('.btn-delete-custom-item').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
-      if (confirm('Hapus menu tambahan kasir ini?')) {
-        deleteCustomMenuItem(id);
-      }
+      deleteCustomMenuItem(id);
     });
   });
 }
@@ -1596,6 +1646,7 @@ function init() {
   setupCashierBillsListener();
   setupDailyRecapListener();
   setupNewOrderAlarmListener();
+  setupRealtimeMenusListener();
 }
 
 document.addEventListener('DOMContentLoaded', init);
