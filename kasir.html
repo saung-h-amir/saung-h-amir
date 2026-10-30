@@ -72,23 +72,140 @@
     </div>
   </header>
 
-  <!-- Navigasi Utama HANYA 2 Tab Besar (Input Pesanan & Tagihan Meja) -->
-  <nav class="pos-tabs" role="tablist">
-    <button type="button" class="pos-tab-btn active" id="tab-btn-input" data-tab="pane-input" role="tab" aria-selected="true">
+  <!-- Navigasi Tab Lama Disembunyikan (Digantikan Bottom Nav RestoQu) -->
+  <nav class="pos-tabs" role="tablist" style="display: none !important;">
+    <button type="button" class="pos-tab-btn" id="tab-btn-input" data-tab="pane-input" role="tab" aria-selected="false">
       <span class="tab-icon">📝</span>
       <span>1. Input Pesanan</span>
     </button>
-    <button type="button" class="pos-tab-btn" id="tab-btn-tagihan" data-tab="pane-tagihan" role="tab" aria-selected="false">
+    <button type="button" class="pos-tab-btn active" id="tab-btn-tagihan" data-tab="pane-tagihan" role="tab" aria-selected="true">
       <span class="tab-icon">💳</span>
       <span>2. Tagihan & Pembayaran</span>
-      <span id="badge-unpaid-tables" class="pos-tab-badge">0 Meja</span>
     </button>
   </nav>
 
   <!-- ====================================================================
-       TAB 1: INPUT PESANAN (KATALOG RINGKAS ALA RESTOQU & KERANJANG)
+       TAB 1: HOME (REKAPITULASI OMZET & RIWAYAT TRANSAKSI RESTOQU)
        ==================================================================== -->
-  <main id="pane-input" class="pos-tab-pane active">
+  <section id="pane-home" class="pos-tab-pane" style="display: none;">
+    <div class="pos-home-container">
+      <div class="pos-pane-header">
+        <div class="pos-pane-title-wrap">
+          <h2 class="pos-pane-title">📊 Rekapitulasi Omzet & Riwayat Transaksi</h2>
+          <span class="pos-pane-sub">Laporan Keuangan dan Rekap Pembayaran Saung H. Amir</span>
+        </div>
+      </div>
+
+      <div class="pos-rekap-container">
+        
+        <!-- Filter Rentang Waktu (Harian / Mingguan / Kustom) -->
+        <div class="rekap-filter-card">
+          <div class="rekap-filter-header">
+            <strong style="font-size: 1.05rem; color: #0f172a;">📅 Filter Rentang Waktu:</strong>
+            <div class="rekap-presets">
+              <button type="button" class="btn-preset active" data-preset="today">Hari Ini</button>
+              <button type="button" class="btn-preset" data-preset="yesterday">Kemarin</button>
+              <button type="button" class="btn-preset" data-preset="week">1 Minggu Ini (7 Hari)</button>
+              <button type="button" class="btn-preset" data-preset="month">Bulan Ini</button>
+              <button type="button" class="btn-preset" data-preset="all">Semua Riwayat</button>
+            </div>
+          </div>
+
+          <div class="rekap-custom-dates">
+            <label for="rekap-start-date" class="rekap-date-label">Dari Tanggal:</label>
+            <input type="date" id="rekap-start-date" class="date-filter-input">
+            <label for="rekap-end-date" class="rekap-date-label">Sampai:</label>
+            <input type="date" id="rekap-end-date" class="date-filter-input">
+            <button type="button" id="btn-apply-filter" class="btn-apply-filter">Terapkan Filter</button>
+          </div>
+        </div>
+
+        <!-- Kartu Ringkasan KPI Pemasukan Berdasarkan Filter -->
+        <div class="rekap-kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-title">💵 Total Tunai</span>
+            <strong id="kpi-tunai" class="kpi-value">Rp 0</strong>
+            <span id="kpi-tunai-count" class="kpi-sub">0 transaksi</span>
+          </div>
+
+          <div class="kpi-card">
+            <span class="kpi-title">📱 Total QRIS</span>
+            <strong id="kpi-qris" class="kpi-value">Rp 0</strong>
+            <span id="kpi-qris-count" class="kpi-sub">0 transaksi</span>
+          </div>
+
+          <div class="kpi-card">
+            <span class="kpi-title">💳 Total Debit</span>
+            <strong id="kpi-debit" class="kpi-value">Rp 0</strong>
+            <span id="kpi-debit-count" class="kpi-sub">0 transaksi</span>
+          </div>
+
+          <div class="kpi-card kpi-grand">
+            <span class="kpi-title">⭐ Grand Total Pemasukan</span>
+            <strong id="kpi-grand-total" class="kpi-value">Rp 0</strong>
+            <span id="kpi-total-transaksi" class="kpi-sub">Total 0 transaksi</span>
+          </div>
+        </div>
+
+        <!-- Riwayat Transaksi Card View (Daftar Kartu Bertumpuk ala M-Banking) -->
+        <div class="rekap-card-view-section">
+          <div class="rekap-cards-header">
+            <div>
+              <h3 class="rekap-section-title" id="rekap-table-title">Daftar Transaksi Lunas</h3>
+              <span class="rekap-section-sub" id="rekap-range-label">Menampilkan data hari ini</span>
+            </div>
+            <button type="button" id="btn-download-csv" class="btn-download-csv">
+              <span aria-hidden="true">📥</span>
+              <span>Download Rekap (Excel/CSV)</span>
+            </button>
+          </div>
+
+          <!-- Daftar Kartu Transaksi M-Banking -->
+          <div id="rekap-cards-container" class="rekap-cards-container">
+            <div class="rekap-empty-state">
+              <span class="rekap-empty-icon">🧾</span>
+              <p>Tidak ada transaksi tercatat pada rentang tanggal ini.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       TAB 2: KASIR (TAGIHAN & PEMBAYARAN KASIR - TAB UTAMA RESTOQU)
+       ==================================================================== -->
+  <section id="pane-tagihan" class="pos-tab-pane active" style="display: flex;">
+    <div class="pos-tagihan-container">
+      <div id="cashier-bills-container" class="cashier-bills-grid">
+        <div class="pos-cart-empty">
+          <span class="pos-cart-empty-icon">💳</span>
+          <p style="font-weight: 700; color: #475569;">Semua Tagihan Sudah Lunas</p>
+          <small>Tidak ada tagihan meja yang berstatus belum lunas saat ini.</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       TAB 3: INPUT PESANAN (KATALOG MENU A-Z & KERANJANG RESTOQU)
+       ==================================================================== -->
+  <main id="pane-input" class="pos-tab-pane" style="display: none;">
+    <!-- Header Input Pesanan: Tombol X Tutup / Batal kembali ke Kasir -->
+    <div class="pos-input-pane-header">
+      <div class="pos-input-pane-title">
+        <span class="pos-input-pane-icon">📋</span>
+        <div>
+          <h2 class="pos-input-pane-heading">Katalog Menu & Input Pesanan Baru</h2>
+          <span class="pos-input-pane-sub">Pilih menu dari daftar, atur meja/ojol, lalu kirim ke dapur</span>
+        </div>
+      </div>
+      <button type="button" id="btn-close-input-pane" class="btn-close-input-pane" title="Kembali ke Layar Kasir">
+        <span>✕ Tutup / Batal</span>
+      </button>
+    </div>
+
     <div class="pos-container" id="app">
       
       <!-- Kolom Kiri: Filter Kategori + Pencarian Cepat + Grid Tombol Menu Super Rapat -->
@@ -216,112 +333,8 @@
     </div>
   </main>
 
-  <!-- ====================================================================
-       TAB 2: TAGIHAN & PEMBAYARAN KASIR (PENGGABUNGAN BON MEJA)
-       ==================================================================== -->
-  <section id="pane-tagihan" class="pos-tab-pane">
-    <div class="pos-tagihan-container">
-      <div id="cashier-bills-container" class="cashier-bills-grid">
-        <div class="pos-cart-empty">
-          <span class="pos-cart-empty-icon">💳</span>
-          <p style="font-weight: 700; color: #475569;">Semua Tagihan Sudah Lunas</p>
-          <small>Tidak ada tagihan meja yang berstatus belum lunas saat ini.</small>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ====================================================================
-       MODAL LAYAR PENUH: REKAP PEMASUKAN DENGAN FILTER RENTANG WAKTU
-       ==================================================================== -->
-  <div id="rekap-modal" class="rekap-modal-overlay modal-overlay hidden" style="display: none !important;">
-    <div class="rekap-modal-box modal-content" id="modal-rekap">
-      <header class="rekap-modal-header">
-        <div class="rekap-modal-title-wrap">
-          <h2 class="rekap-modal-title">📊 Rekap Pemasukan & Riwayat Transaksi</h2>
-          <span class="rekap-modal-sub">Laporan Omzet dan Pembayaran Saung H. Amir</span>
-        </div>
-        <button type="button" id="btn-close-rekap-modal" class="rekap-modal-close-btn btn-close-rekap" title="Tutup Rekap">✕ Tutup</button>
-      </header>
-
-      <div class="rekap-modal-body">
-        <div class="pos-rekap-container">
-          
-          <!-- Filter Rentang Waktu (Harian / Mingguan / Kustom) -->
-          <div class="rekap-filter-card">
-            <div class="rekap-filter-header">
-              <strong style="font-size: 1rem; color: #0f172a;">📅 Filter Rentang Waktu:</strong>
-              <div class="rekap-presets">
-                <button type="button" class="btn-preset active" data-preset="today">Hari Ini</button>
-                <button type="button" class="btn-preset" data-preset="yesterday">Kemarin</button>
-                <button type="button" class="btn-preset" data-preset="week">1 Minggu Ini (7 Hari)</button>
-                <button type="button" class="btn-preset" data-preset="month">Bulan Ini</button>
-                <button type="button" class="btn-preset" data-preset="all">Semua Riwayat</button>
-              </div>
-            </div>
-
-            <div class="rekap-custom-dates">
-              <label for="rekap-start-date" class="rekap-date-label">Dari Tanggal:</label>
-              <input type="date" id="rekap-start-date" class="date-filter-input">
-              <label for="rekap-end-date" class="rekap-date-label">Sampai:</label>
-              <input type="date" id="rekap-end-date" class="date-filter-input">
-              <button type="button" id="btn-apply-filter" class="btn-apply-filter">Terapkan Filter</button>
-            </div>
-          </div>
-
-          <!-- Kartu Ringkasan KPI Pemasukan Berdasarkan Filter -->
-          <div class="rekap-kpi-grid">
-            <div class="kpi-card">
-              <span class="kpi-title">💵 Total Tunai</span>
-              <strong id="kpi-tunai" class="kpi-value">Rp 0</strong>
-              <span id="kpi-tunai-count" class="kpi-sub">0 transaksi</span>
-            </div>
-
-            <div class="kpi-card">
-              <span class="kpi-title">📱 Total QRIS</span>
-              <strong id="kpi-qris" class="kpi-value">Rp 0</strong>
-              <span id="kpi-qris-count" class="kpi-sub">0 transaksi</span>
-            </div>
-
-            <div class="kpi-card">
-              <span class="kpi-title">💳 Total Debit</span>
-              <strong id="kpi-debit" class="kpi-value">Rp 0</strong>
-              <span id="kpi-debit-count" class="kpi-sub">0 transaksi</span>
-            </div>
-
-            <div class="kpi-card kpi-grand">
-              <span class="kpi-title">⭐ Grand Total Pemasukan</span>
-              <strong id="kpi-grand-total" class="kpi-value">Rp 0</strong>
-              <span id="kpi-total-transaksi" class="kpi-sub">Total 0 transaksi</span>
-            </div>
-          </div>
-
-          <!-- Riwayat Transaksi Card View (Daftar Kartu Bertumpuk ala M-Banking) -->
-          <div class="rekap-card-view-section">
-            <div class="rekap-cards-header">
-              <div>
-                <h3 class="rekap-section-title" id="rekap-table-title">Daftar Transaksi Lunas</h3>
-                <span class="rekap-section-sub" id="rekap-range-label">Menampilkan data hari ini</span>
-              </div>
-              <button type="button" id="btn-download-csv" class="btn-download-csv">
-                <span aria-hidden="true">📥</span>
-                <span>Download Rekap (Excel/CSV)</span>
-              </button>
-            </div>
-
-            <!-- Daftar Kartu Transaksi M-Banking -->
-            <div id="rekap-cards-container" class="rekap-cards-container">
-              <div class="rekap-empty-state">
-                <span class="rekap-empty-icon">🧾</span>
-                <p>Tidak ada transaksi tercatat pada rentang tanggal ini.</p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Elemen Dummy Rekap Modal (Konten telah dialihkan ke Tab Home Layar Utama) -->
+  <div id="rekap-modal" style="display: none !important;" hidden></div>
 
   <!-- ====================================================================
        MODAL PEMBAYARAN TUNAI (HITUNG KEMBALIAN REAL-TIME)
@@ -507,6 +520,34 @@
       </div>
     </div>
   </div>
+
+  <!-- ====================================================================
+       BOTTOM NAVIGATION BAR (RESTOQU MOBILE STYLE)
+       ==================================================================== -->
+  <nav id="bottom-nav" class="bottom-nav" role="navigation" aria-label="Navigasi Kasir RestoQu">
+    <!-- 1. Tombol 🏠 HOME (Rekapitulasi Omzet) -->
+    <button type="button" class="bottom-nav-btn" id="bottom-btn-home" data-tab="pane-home" title="Layar Home & Rekapitulasi">
+      <span class="bottom-nav-icon">🏠</span>
+      <span class="bottom-nav-label">Home</span>
+    </button>
+
+    <!-- 2. 🟢 TOMBOL [+] MENGAMBANG DI TENGAH (Bulat Hijau Tebal ala RestoQu) -->
+    <div class="bottom-nav-fab-wrapper">
+      <button type="button" class="bottom-nav-fab" id="bottom-btn-add" data-tab="pane-input" title="Input Pesanan Baru (Katalog Menu)">
+        <span class="bottom-nav-fab-icon">➕</span>
+      </button>
+      <span class="bottom-nav-fab-label">Input</span>
+    </div>
+
+    <!-- 3. Tombol 📝 KASIR (Daftar Tagihan Meja Belum Lunas) -->
+    <button type="button" class="bottom-nav-btn active" id="bottom-btn-kasir" data-tab="pane-tagihan" title="Daftar Tagihan Meja Kasir">
+      <div class="bottom-nav-icon-wrap">
+        <span class="bottom-nav-icon">📝</span>
+        <span id="badge-unpaid-tables" class="bottom-nav-badge">0 Meja</span>
+      </div>
+      <span class="bottom-nav-label">Kasir</span>
+    </button>
+  </nav>
 
   <!-- Area Render Struk Thermal Bluetooth (58mm/80mm) -->
   <div id="thermal-print-area"></div>

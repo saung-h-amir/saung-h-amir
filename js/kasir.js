@@ -87,15 +87,23 @@ const dom = {
   pinError: document.getElementById('pin-error'),
   pinSubmitBtn: document.getElementById('pin-submit-btn'),
 
-  // Tabs Nav (HANYA 2 TAB UTAMA)
+  // RestoQu Bottom Navigation Bar & Panes
+  bottomNav: document.getElementById('bottom-nav'),
+  bottomBtnHome: document.getElementById('bottom-btn-home'),
+  bottomBtnKasir: document.getElementById('bottom-btn-kasir'),
+  bottomBtnAdd: document.getElementById('bottom-btn-add'),
+  btnCloseInputPane: document.getElementById('btn-close-input-pane'),
+  paneHome: document.getElementById('pane-home'),
+  paneTagihan: document.getElementById('pane-tagihan'),
+  paneInput: document.getElementById('pane-input'),
+
+  // Tabs Nav Legacy
   tabBtnInput: document.getElementById('tab-btn-input'),
   tabBtnTagihan: document.getElementById('tab-btn-tagihan'),
-  paneInput: document.getElementById('pane-input'),
-  paneTagihan: document.getElementById('pane-tagihan'),
   badgeUnpaidTables: document.getElementById('badge-unpaid-tables'),
   badgeRekapTotal: document.getElementById('badge-rekap-total'),
 
-  // Tombol & Modal Rekap Pemasukan Layar Penuh
+  // Tombol & Modal Rekap Pemasukan (Kompatibilitas)
   btnOpenRekapModal: document.getElementById('btn-open-rekap-modal') || document.getElementById('btn-open-rekap'),
   rekapModal: document.getElementById('rekap-modal') || document.getElementById('modal-rekap'),
   btnCloseRekapModal: document.getElementById('btn-close-rekap-modal') || document.getElementById('btn-close-rekap'),
@@ -269,11 +277,21 @@ function showToast(message, type = '') {
 }
 
 /* --------------------------------------------------------------------------
-   2. Navigasi 2 Tab Utama & Modal Rekap Kasir POS
+   2. Navigasi Bottom Nav RestoQu (Home, Kasir, Input Menu)
    -------------------------------------------------------------------------- */
 function switchTab(tabId) {
   state.activeTab = tabId;
-  [dom.tabBtnInput, dom.tabBtnTagihan].forEach((btn) => {
+
+  // 1. Update active state pada tombol Bottom Nav dan tombol legacy
+  const allNavBtns = [
+    dom.bottomBtnHome,
+    dom.bottomBtnKasir,
+    dom.bottomBtnAdd,
+    dom.tabBtnInput,
+    dom.tabBtnTagihan,
+    ...document.querySelectorAll('#bottom-nav [data-tab]')
+  ];
+  allNavBtns.forEach((btn) => {
     if (btn) {
       const isActive = btn.getAttribute('data-tab') === tabId;
       btn.classList.toggle('active', isActive);
@@ -281,31 +299,35 @@ function switchTab(tabId) {
     }
   });
 
-  [dom.paneInput, dom.paneTagihan].forEach((pane) => {
-    if (pane) {
-      pane.classList.toggle('active', pane.id === tabId);
+  // 2. Update status display ketiga Pane Utama (Home, Kasir, Input)
+  const panes = [
+    { el: dom.paneHome || document.getElementById('pane-home'), id: 'pane-home' },
+    { el: dom.paneTagihan || document.getElementById('pane-tagihan'), id: 'pane-tagihan' },
+    { el: dom.paneInput || document.getElementById('pane-input'), id: 'pane-input' }
+  ];
+
+  panes.forEach(({ el, id }) => {
+    if (el) {
+      const isActive = id === tabId;
+      el.classList.toggle('active', isActive);
+      if (isActive) {
+        el.style.setProperty('display', 'flex', 'important');
+      } else {
+        el.style.setProperty('display', 'none', 'important');
+      }
     }
   });
+
+  // 3. Scroll ke atas secara halus
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function openRekapModal() {
-  const modal = dom.rekapModal || document.getElementById('rekap-modal') || document.getElementById('modal-rekap');
-  if (modal) {
-    modal.classList.add('active', 'is-open');
-    modal.classList.remove('hidden');
-    modal.style.setProperty('display', 'flex', 'important');
-    document.body.style.overflow = 'hidden';
-  }
+  switchTab('pane-home');
 }
 
 function closeRekapModal() {
-  const modal = dom.rekapModal || document.getElementById('rekap-modal') || document.getElementById('modal-rekap');
-  if (modal) {
-    modal.classList.remove('active', 'is-open');
-    modal.classList.add('hidden');
-    modal.style.setProperty('display', 'none', 'important');
-    document.body.style.overflow = '';
-  }
+  switchTab('pane-tagihan');
 }
 
 // Window helper aliases agar bisa diakses secara global jika dibutuhkan
@@ -315,6 +337,7 @@ window.bukaModalRekap = openRekapModal;
 window.tutupModalRekap = closeRekapModal;
 window.showRekap = openRekapModal;
 window.hideRekap = closeRekapModal;
+window.switchTab = switchTab;
 
 /* --------------------------------------------------------------------------
    3. TAB 1: INPUT PESANAN (MENU LIST VIEW 1 BARIS BESAR - A SAMPAI Z)
@@ -690,6 +713,9 @@ async function sendOrderToFirestore() {
     state.cart = [];
     renderCart();
     if (dom.ojolCodeInput) dom.ojolCodeInput.value = '';
+
+    // Beralih otomatis ke tab Kasir (Tagihan Meja) agar kasir langsung melihat bon meja baru
+    switchTab('pane-tagihan');
 
   } catch (err) {
     console.error('Gagal mengirim pesanan ke Firestore:', err);
@@ -1964,11 +1990,8 @@ function setupNewOrderAlarmListener() {
 function init() {
   checkAuth();
 
-  // Pastikan Tab 1 (Input Pesanan) aktif secara default saat kasir dibuka
-  switchTab('pane-input');
-
-  // Pastikan Modal Rekap terkunci tertutup secara default
-  closeRekapModal();
+  // Pastikan Tab Kasir (Tagihan Meja) aktif secara default saat kasir dibuka
+  switchTab('pane-tagihan');
 
   renderCategories();
   renderMenuGrid();
@@ -1981,17 +2004,25 @@ function init() {
   if (dom.pinForm) dom.pinForm.addEventListener('submit', handlePinSubmit);
   if (dom.pinSubmitBtn) dom.pinSubmitBtn.addEventListener('click', handlePinSubmit);
 
-  // Tabs Nav Events (Hanya 2 Tab Utama)
+  // Bottom Navigation Bar RestoQu Events
+  if (dom.bottomBtnHome) dom.bottomBtnHome.addEventListener('click', () => switchTab('pane-home'));
+  if (dom.bottomBtnKasir) dom.bottomBtnKasir.addEventListener('click', () => switchTab('pane-tagihan'));
+  if (dom.bottomBtnAdd) dom.bottomBtnAdd.addEventListener('click', () => switchTab('pane-input'));
+
+  // Tombol X Tutup / Batal pada Header Katalog Menu (kembali ke Kasir)
+  if (dom.btnCloseInputPane) dom.btnCloseInputPane.addEventListener('click', () => switchTab('pane-tagihan'));
+
+  // Tabs Nav Legacy Events
   if (dom.tabBtnInput) dom.tabBtnInput.addEventListener('click', () => switchTab('pane-input'));
   if (dom.tabBtnTagihan) dom.tabBtnTagihan.addEventListener('click', () => switchTab('pane-tagihan'));
 
-  // Header Rekap Modal Pop-up Events (Dukungan tombol header & penutup modal)
+  // Header Rekap shortcut button (jika diklik, alihkan ke tab Home)
   const openRekapBtns = [
     dom.btnOpenRekapModal,
     document.getElementById('btn-open-rekap')
   ];
   openRekapBtns.forEach((btn) => {
-    if (btn) btn.addEventListener('click', openRekapModal);
+    if (btn) btn.addEventListener('click', () => switchTab('pane-home'));
   });
 
   const closeRekapBtns = [
