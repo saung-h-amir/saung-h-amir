@@ -364,7 +364,7 @@ function renderCategories() {
   categoriesList.forEach((cat) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `pos-category-btn ${state.activeCategory === cat ? 'active' : ''}`;
+    btn.className = `pos-category-btn category-btn ${state.activeCategory === cat ? 'active' : ''}`;
     btn.textContent = cat;
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', state.activeCategory === cat ? 'true' : 'false');
