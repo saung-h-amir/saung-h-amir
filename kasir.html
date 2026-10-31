@@ -218,29 +218,22 @@
 
     <div class="pos-container" id="app">
       
-      <!-- Kolom Kiri: Filter Kategori + Pencarian Cepat + Grid Tombol Menu Super Rapat -->
+      <!-- Kolom Kiri: Bar Aksi Utama (Pilih Kategori & Tambah Menu Manual) + Grid Menu -->
       <section class="pos-menu-panel" aria-label="Katalog Menu POS">
         <div class="pos-filter-bar">
-          <!-- Input Pencarian Cepat & Tombol Tambah Menu Kasir -->
-          <div class="pos-search-action-row">
-            <div class="pos-search-box">
-              <span class="pos-search-icon" aria-hidden="true">🔍</span>
-              <input 
-                type="search" 
-                id="pos-search" 
-                class="pos-search-input" 
-                placeholder="Ketik cari menu (contoh: ayam, gurame, sambal, nila)..." 
-                autocomplete="off"
-              >
-              <button type="button" id="pos-search-clear" class="pos-search-clear" title="Hapus Pencarian" hidden>✕</button>
-            </div>
-            <button type="button" id="btn-open-custom-menu" class="btn-add-custom-menu" title="Tambah Menu Baru Khusus Kasir POS">
-              <span>➕ Tambah Menu</span>
+          <div class="pos-top-action-bar">
+            <!-- 1. Tombol Besar: PILIH KATEGORI MENU ⬇️ -->
+            <button type="button" id="btn-select-category" class="btn-top-category" title="Buka Daftar Kategori Menu">
+              <span class="btn-category-icon" aria-hidden="true">📂</span>
+              <span id="btn-category-label" class="btn-category-label">PILIH KATEGORI MENU ⬇️</span>
+            </button>
+
+            <!-- 2. Tombol Besar: + TAMBAH MENU MANUAL -->
+            <button type="button" id="btn-open-custom-menu" class="btn-top-manual" title="Tambah Menu Manual Khusus Kasir POS">
+              <span class="btn-manual-icon" aria-hidden="true">➕</span>
+              <span class="btn-manual-label">+ TAMBAH MENU MANUAL</span>
             </button>
           </div>
-
-          <!-- Filter Pill Kategori -->
-          <div id="pos-categories" class="pos-categories-pills category-nav category-tabs" role="tablist" aria-label="Kategori Menu"></div>
         </div>
 
         <!-- Banner Mode Ojol Aktif -->
@@ -402,38 +395,25 @@
     </div>
   </div>
 
-  <!-- Modal Edit Pesanan (Ubah Qty & Hapus Item Belum Lunas) -->
-  <div id="modal-edit-pesanan" class="pos-modal-overlay" style="display: none;">
-    <div class="pos-modal-box edit-order-modal-box">
+  <!-- ====================================================================
+       MODAL PILIH KATEGORI MENU (DAFTAR VERTIKAL BESAR RAMAH LANSIA)
+       ==================================================================== -->
+  <div id="modal-category-picker" class="pos-modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modal-cat-picker-title">
+    <div class="pos-modal-box category-picker-box">
       <header class="pos-modal-header">
         <div>
-          <h3 class="pos-modal-title" id="edit-order-modal-title">✏️ Edit Pesanan Meja</h3>
-          <span class="edit-order-modal-sub" id="edit-order-modal-sub">Ubah porsi atau hapus menu jika habis di dapur</span>
+          <h3 class="pos-modal-title" id="modal-cat-picker-title">📂 Pilih Kategori Menu</h3>
+          <span class="pos-modal-sub">Sentuh salah satu kategori untuk menampilkan daftar menu</span>
         </div>
-        <button type="button" id="btn-close-edit-order-modal" class="pos-modal-close" title="Tutup">✕</button>
+        <button type="button" id="btn-close-category-picker" class="pos-modal-close" title="Tutup">✕</button>
       </header>
-      <div class="pos-modal-body">
-        <div id="edit-order-items-container" class="edit-order-items-container">
-          <!-- Diisi via JavaScript -->
-        </div>
-
-        <!-- Ringkasan Total Hasil Edit -->
-        <div class="edit-order-summary-box">
-          <div class="edit-summary-row">
-            <span>Total Menu:</span>
-            <strong id="edit-order-total-items">0 item</strong>
-          </div>
-          <div class="edit-summary-row edit-summary-grand">
-            <span>Total Tagihan Baru:</span>
-            <strong id="edit-order-new-total" class="edit-new-total-val">Rp 0</strong>
-          </div>
+      <div class="category-picker-body">
+        <div id="category-picker-list" class="category-picker-list">
+          <!-- Diisi via JavaScript: Tombol kategori vertikal ramah lansia -->
         </div>
       </div>
-      <div class="edit-order-modal-footer">
-        <button type="button" id="btn-cancel-edit-order" class="btn-modal-cancel">Batal</button>
-        <button type="button" id="btn-save-edit-order" class="btn-save-edit-order">
-          💾 Simpan Perubahan Pesanan
-        </button>
+      <div class="category-picker-footer">
+        <button type="button" id="btn-cancel-category-picker" class="btn-modal-cancel">✕ Tutup</button>
       </div>
     </div>
   </div>

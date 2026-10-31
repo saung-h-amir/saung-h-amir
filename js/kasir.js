@@ -17,6 +17,7 @@ import {
   deleteDoc,
   writeBatch,
   serverTimestamp,
+  getDoc,
   getDocs,
   orderBy
 } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
@@ -118,6 +119,12 @@ const dom = {
   btnStopAlarm: document.getElementById('btn-stop-alarm'),
 
   // Tab 1: Input Pesanan
+  btnSelectCategory: document.getElementById('btn-select-category'),
+  btnCategoryLabel: document.getElementById('btn-category-label'),
+  modalCategoryPicker: document.getElementById('modal-category-picker'),
+  btnCloseCategoryPicker: document.getElementById('btn-close-category-picker'),
+  btnCancelCategoryPicker: document.getElementById('btn-cancel-category-picker'),
+  categoryPickerList: document.getElementById('category-picker-list'),
   searchInput: document.getElementById('pos-search'),
   searchClearBtn: document.getElementById('pos-search-clear'),
   categoriesContainer: document.getElementById('pos-categories'),
@@ -486,27 +493,70 @@ function setupRealtimeMenusListener() {
   });
 }
 
-function renderCategories() {
-  if (!dom.categoriesContainer) return;
-  dom.categoriesContainer.innerHTML = '';
+function openCategoryPickerModal() {
+  const modal = dom.modalCategoryPicker || document.getElementById('modal-category-picker');
+  if (!modal) return;
+  renderCategoryPickerList();
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
 
-  RESTOQU_CATEGORIES.forEach((catObj) => {
+function closeCategoryPickerModal() {
+  const modal = dom.modalCategoryPicker || document.getElementById('modal-category-picker');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
+function renderCategoryPickerList() {
+  const listEl = dom.categoryPickerList || document.getElementById('category-picker-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  const currentCat = state.activeCategory || 'ALL';
+
+  RESTOQU_CATEGORIES.forEach((cat) => {
+    const isSelected = currentCat === cat.id;
     const btn = document.createElement('button');
     btn.type = 'button';
-    const isActive = (state.activeCategory || 'ALL') === catObj.id;
-    btn.className = `pos-category-btn category-btn ${isActive ? 'active' : ''}`;
-    btn.textContent = catObj.label;
-    btn.setAttribute('role', 'tab');
-    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    btn.className = `btn-category-option ${isSelected ? 'active' : ''}`;
+    btn.innerHTML = `
+      <span class="cat-option-name">${cat.label}</span>
+      ${isSelected ? '<span class="cat-option-check">✓ Dipilih</span>' : '<span class="cat-option-arrow">➔</span>'}
+    `;
 
     btn.addEventListener('click', () => {
-      state.activeCategory = catObj.id;
-      renderCategories();
-      renderMenuGrid();
+      selectCategory(cat.id, cat.label);
     });
 
-    dom.categoriesContainer.appendChild(btn);
+    listEl.appendChild(btn);
   });
+}
+
+function selectCategory(catId, catLabel) {
+  state.activeCategory = catId;
+  updateCategoryButtonLabel(catId, catLabel);
+  closeCategoryPickerModal();
+  renderMenuGrid();
+}
+
+function updateCategoryButtonLabel(catId, catLabel) {
+  const labelEl = dom.btnCategoryLabel || document.getElementById('btn-category-label');
+  if (!labelEl) return;
+  if (!catId || catId === 'ALL') {
+    labelEl.textContent = 'PILIH KATEGORI MENU ⬇️';
+  } else {
+    labelEl.textContent = `KATEGORI: ${catLabel || catId} ⬇️`;
+  }
+}
+
+function renderCategories() {
+  const activeObj = RESTOQU_CATEGORIES.find((c) => c.id === (state.activeCategory || 'ALL'));
+  updateCategoryButtonLabel(state.activeCategory || 'ALL', activeObj ? activeObj.label : '');
+  if (dom.categoriesContainer) {
+    dom.categoriesContainer.innerHTML = '';
+  }
 }
 
 function renderMenuGrid() {
@@ -1027,8 +1077,10 @@ function renderCashierBills(groups) {
     // Konsolidasikan daftar menu
     const mergedItems = [];
     group.tickets.forEach((ticket, tIdx) => {
-      (ticket.items || []).forEach((item) => {
+      (ticket.items || []).forEach((item, itemIdx) => {
         mergedItems.push({
+          ticketId: ticket.id,
+          itemIdx: itemIdx,
           ticketNum: tIdx + 1,
           name: item.name || item.nama || 'Menu',
           qty: Number(item.qty || item.quantity || 1),
@@ -1040,12 +1092,25 @@ function renderCashierBills(groups) {
     });
 
     const itemsHtml = mergedItems.map((item) => `
-      <div class="bill-item-row">
-        <span class="bill-item-title">
-          ${item.qty}x ${item.name} ${item.note ? `<small style="color: #94a3b8;">(${item.note})</small>` : ''}
-          ${isMultiple ? `<small style="color: #3b82f6; font-size: 0.7rem;">[Tiket #${item.ticketNum}]</small>` : ''}
-        </span>
-        <span class="bill-item-amount">${formatRupiah(item.subtotal)}</span>
+      <div class="bill-item-row inline-edit" data-ticket-id="${item.ticketId}" data-item-idx="${item.itemIdx}">
+        <div class="bill-item-main-info">
+          <div class="bill-item-title-wrap">
+            <strong class="bill-item-title">${item.name}</strong>
+            ${item.note ? `<small class="bill-item-note">(${item.note})</small>` : ''}
+            ${isMultiple ? `<span class="bill-item-ticket-badge">Tiket #${item.ticketNum}</span>` : ''}
+          </div>
+          <span class="bill-item-unit-price">${formatRupiah(item.price)}</span>
+        </div>
+
+        <div class="bill-item-stepper-wrap">
+          <button type="button" class="btn-bill-stepper btn-bill-minus" data-ticket-id="${item.ticketId}" data-item-idx="${item.itemIdx}" title="Kurangi 1 porsi">－</button>
+          <span class="bill-stepper-qty">${item.qty}</span>
+          <button type="button" class="btn-bill-stepper btn-bill-plus" data-ticket-id="${item.ticketId}" data-item-idx="${item.itemIdx}" title="Tambah 1 porsi">＋</button>
+        </div>
+
+        <div class="bill-item-subtotal-wrap">
+          <strong class="bill-item-amount">${formatRupiah(item.subtotal)}</strong>
+        </div>
       </div>
     `).join('');
 
@@ -1064,13 +1129,9 @@ function renderCashierBills(groups) {
 
       <footer class="bill-footer">
         <div class="bill-actions-row">
-          <button type="button" class="btn-bill-edit">
-            <span>✏️</span>
-            <span>Edit Pesanan</span>
-          </button>
           <button type="button" class="btn-bill-print">
             <span>🖨️</span>
-            <span>Cetak Struk</span>
+            <span>Cetak Struk Tagihan</span>
           </button>
         </div>
 
@@ -1088,9 +1149,23 @@ function renderCashierBills(groups) {
       </footer>
     `;
 
-    // Event Edit Pesanan
-    card.querySelector('.btn-bill-edit').addEventListener('click', () => {
-      openEditOrderModal(group);
+    // Event Stepper Minus & Plus Inline Langsung Update Firebase
+    card.querySelectorAll('.btn-bill-minus').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const ticketId = btn.getAttribute('data-ticket-id');
+        const itemIdx = parseInt(btn.getAttribute('data-item-idx'), 10);
+        await handleInlineUpdateItemQty(ticketId, itemIdx, -1, btn);
+      });
+    });
+
+    card.querySelectorAll('.btn-bill-plus').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const ticketId = btn.getAttribute('data-ticket-id');
+        const itemIdx = parseInt(btn.getAttribute('data-item-idx'), 10);
+        await handleInlineUpdateItemQty(ticketId, itemIdx, 1, btn);
+      });
     });
 
     // Event Cetak Struk
@@ -1126,258 +1201,97 @@ function renderCashierBills(groups) {
 }
 
 /* --------------------------------------------------------------------------
-   4b. MODAL EDIT PESANAN (UBAH QTY & HAPUS ITEM TIKET BELUM LUNAS)
+   4b. KONTROL JUMLAH INLINE (STEPPER LANGSUNG KE FIRESTORE TANPA MODAL)
    -------------------------------------------------------------------------- */
-let activeEditingGroup = null;
-let activeEditingTickets = [];
+let isInlineUpdating = false;
 
-function openEditOrderModal(group) {
-  if (!group || !group.tickets || group.tickets.length === 0) return;
-  activeEditingGroup = group;
+async function handleInlineUpdateItemQty(ticketId, itemIdx, delta, triggerBtn) {
+  if (isInlineUpdating) return;
+  if (!ticketId || isNaN(itemIdx)) return;
 
-  // Kloning mendalam (deep clone) agar perubahan belum tersimpan tidak merusak data lokal
-  activeEditingTickets = group.tickets.map((t) => ({
-    id: t.id,
-    nomorMeja: t.nomorMeja,
-    isOjol: Boolean(t.isOjol),
-    kodeOjol: t.kodeOjol || '',
-    createdAt: t.createdAt,
-    items: (t.items || []).map((it) => ({
-      id: it.id || '',
-      name: it.name || it.nama || 'Menu',
-      price: Number(it.price || it.harga || 0),
-      qty: Number(it.qty || it.quantity || 1),
-      subtotal: Number(it.price || it.harga || 0) * Number(it.qty || it.quantity || 1),
-      note: it.note || it.catatan || ''
-    }))
-  }));
-
-  const displayTitle = group.isOjol
-    ? `🛵 GoFood (${group.kodeOjol || 'Driver'})`
-    : group.nomorMeja;
-
-  if (dom.editOrderModalTitle) {
-    dom.editOrderModalTitle.textContent = `✏️ Edit Pesanan - ${displayTitle}`;
-  }
-  if (dom.editOrderModalSub) {
-    dom.editOrderModalSub.textContent = `Ubah jumlah porsi atau hapus menu yang habis untuk ${displayTitle}`;
-  }
-
-  renderEditOrderModal();
-
-  const modalEl = dom.modalEditPesanan || dom.editOrderModal || document.getElementById('modal-edit-pesanan');
-  if (modalEl) {
-    modalEl.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-  }
-}
-
-function closeEditOrderModal() {
-  const modalEl = dom.modalEditPesanan || dom.editOrderModal || document.getElementById('modal-edit-pesanan');
-  if (modalEl) {
-    modalEl.style.display = 'none';
-    document.body.style.overflow = '';
-  }
-  activeEditingGroup = null;
-  activeEditingTickets = [];
-}
-
-function handleEditItemQty(ticketIdx, itemIdx, delta) {
-  const ticket = activeEditingTickets[ticketIdx];
-  if (!ticket || !ticket.items[itemIdx]) return;
-
-  const item = ticket.items[itemIdx];
-  const nextQty = item.qty + delta;
-
-  if (nextQty <= 0) {
-    ticket.items.splice(itemIdx, 1);
-  } else {
-    item.qty = Math.min(99, nextQty);
-    item.subtotal = item.qty * item.price;
-  }
-
-  renderEditOrderModal();
-}
-
-function handleDeleteEditItem(ticketIdx, itemIdx) {
-  const ticket = activeEditingTickets[ticketIdx];
-  if (!ticket || !ticket.items[itemIdx]) return;
-  const itemName = ticket.items[itemIdx].name;
-  if (confirm(`Hapus menu "${itemName}" dari daftar pesanan?`)) {
-    ticket.items.splice(itemIdx, 1);
-    renderEditOrderModal();
-  }
-}
-
-function renderEditOrderModal() {
-  if (!dom.editOrderItemsContainer) return;
-
-  let totalItemsCount = 0;
-  let newGrandTotal = 0;
-  const isMultiple = activeEditingTickets.length > 1;
-
-  dom.editOrderItemsContainer.innerHTML = '';
-
-  activeEditingTickets.forEach((ticket, tIdx) => {
-    const ticketTotal = ticket.items.reduce((sum, it) => sum + (it.qty * it.price), 0);
-    newGrandTotal += ticketTotal;
-    const ticketItemCount = ticket.items.reduce((sum, it) => sum + it.qty, 0);
-    totalItemsCount += ticketItemCount;
-
-    const ticketSection = document.createElement('div');
-    ticketSection.className = 'edit-ticket-section';
-
-    let headerHtml = '';
-    if (isMultiple) {
-      headerHtml = `
-        <div class="edit-ticket-header">
-          <span>📦 Tiket #${tIdx + 1} (${ticket.items.length} menu)</span>
-          <strong style="color: #15803d;">${formatRupiah(ticketTotal)}</strong>
-        </div>
-      `;
-    }
-
-    let itemsHtml = '';
-    if (ticket.items.length === 0) {
-      itemsHtml = `
-        <div class="edit-empty-warning" style="margin: 0.75rem;">
-          ⚠️ Seluruh menu pada tiket #${tIdx + 1} ini telah dihapus.
-        </div>
-      `;
-    } else {
-      itemsHtml = ticket.items.map((it, iIdx) => `
-        <div class="edit-item-row" data-t-idx="${tIdx}" data-i-idx="${iIdx}">
-          <div class="edit-item-info">
-            <strong class="edit-item-name">${it.name}</strong>
-            <span class="edit-item-price">${formatRupiah(it.price)} / porsi</span>
-            ${it.note ? `<span class="edit-item-note">Catatan: ${it.note}</span>` : ''}
-          </div>
-          <div class="edit-item-actions">
-            <div class="edit-qty-stepper">
-              <button type="button" class="btn-edit-qty-minus" title="Kurangi 1 porsi">－</button>
-              <span class="edit-qty-display">${it.qty}</span>
-              <button type="button" class="btn-edit-qty-plus" title="Tambah 1 porsi">＋</button>
-            </div>
-            <div class="edit-item-subtotal">${formatRupiah(it.qty * it.price)}</div>
-            <button type="button" class="btn-edit-item-delete" title="Hapus item ini dari pesanan">
-              🗑️ Hapus
-            </button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    ticketSection.innerHTML = `
-      ${headerHtml}
-      <div class="edit-ticket-body">
-        ${itemsHtml}
-      </div>
-    `;
-
-    dom.editOrderItemsContainer.appendChild(ticketSection);
-  });
-
-  // Pasang Event Listeners ke Tombol Stepper dan Hapus
-  dom.editOrderItemsContainer.querySelectorAll('.edit-item-row').forEach((row) => {
-    const tIdx = parseInt(row.getAttribute('data-t-idx'), 10);
-    const iIdx = parseInt(row.getAttribute('data-i-idx'), 10);
-
-    const minusBtn = row.querySelector('.btn-edit-qty-minus');
-    if (minusBtn) minusBtn.addEventListener('click', () => handleEditItemQty(tIdx, iIdx, -1));
-
-    const plusBtn = row.querySelector('.btn-edit-qty-plus');
-    if (plusBtn) plusBtn.addEventListener('click', () => handleEditItemQty(tIdx, iIdx, 1));
-
-    const deleteBtn = row.querySelector('.btn-edit-item-delete');
-    if (deleteBtn) deleteBtn.addEventListener('click', () => handleDeleteEditItem(tIdx, iIdx));
-  });
-
-  if (dom.editOrderTotalItems) {
-    const totalDistinctMenus = activeEditingTickets.reduce((acc, t) => acc + t.items.length, 0);
-    dom.editOrderTotalItems.textContent = `${totalItemsCount} porsi (${totalDistinctMenus} menu)`;
-  }
-  if (dom.editOrderNewTotal) {
-    dom.editOrderNewTotal.textContent = formatRupiah(newGrandTotal);
-  }
-}
-
-async function handleSaveOrderEdits() {
-  if (!activeEditingGroup || activeEditingTickets.length === 0) return;
-
-  const totalRemainingItems = activeEditingTickets.reduce((acc, t) => acc + t.items.length, 0);
-
-  // Jika SEMUA item dari seluruh tiket dihapus
-  if (totalRemainingItems === 0) {
-    const confirmCancel = confirm(
-      'Seluruh item pesanan telah dihapus!\nApakah Anda ingin membatalkan (menghapus) tiket pesanan ini sepenuhnya dari sistem kasir dan dapur?'
-    );
-    if (!confirmCancel) return;
-
-    if (dom.btnSaveEditOrder) {
-      dom.btnSaveEditOrder.disabled = true;
-      dom.btnSaveEditOrder.textContent = 'Membatalkan Tiket...';
-    }
-
-    try {
-      for (const ticket of activeEditingTickets) {
-        await deleteDoc(doc(db, 'orders', ticket.id));
-      }
-      showToast('Seluruh tiket pesanan berhasil dibatalkan dan dihapus.', 'info');
-      closeEditOrderModal();
-    } catch (err) {
-      console.error('Gagal menghapus tiket pesanan:', err);
-      alert('Gagal membatalkan tiket: ' + (err.message || 'Kesalahan jaringan.'));
-    } finally {
-      if (dom.btnSaveEditOrder) {
-        dom.btnSaveEditOrder.disabled = false;
-        dom.btnSaveEditOrder.textContent = '💾 Simpan Perubahan Pesanan';
-      }
-    }
-    return;
-  }
-
-  // Jika masih ada item tersisa, perbarui ke Firestore
-  if (dom.btnSaveEditOrder) {
-    dom.btnSaveEditOrder.disabled = true;
-    dom.btnSaveEditOrder.textContent = 'Menyimpan Perubahan...';
+  isInlineUpdating = true;
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
   }
 
   try {
-    for (const ticket of activeEditingTickets) {
-      if (ticket.items.length === 0) {
-        await deleteDoc(doc(db, 'orders', ticket.id));
-      } else {
-        const sanitizedItems = ticket.items.map((it) => ({
-          id: String(it.id || ''),
-          name: String(it.name),
-          qty: Number(it.qty),
-          price: Number(it.price),
-          subtotal: Number(it.qty * it.price),
-          note: String(it.note || '').trim()
-        }));
+    const ticketRef = doc(db, 'orders', ticketId);
+    const ticketSnap = await getDoc(ticketRef);
+    if (!ticketSnap.exists()) {
+      alert('Tiket pesanan tidak ditemukan di database.');
+      return;
+    }
 
-        const newTotal = sanitizedItems.reduce((acc, it) => acc + it.subtotal, 0);
+    const data = ticketSnap.data();
+    const items = Array.isArray(data.items) ? [...data.items] : [];
+    if (!items[itemIdx]) {
+      alert('Menu tidak ditemukan dalam daftar pesanan.');
+      return;
+    }
 
-        await updateDoc(doc(db, 'orders', ticket.id), {
-          items: sanitizedItems,
-          totalHarga: Number(newTotal),
-          updatedAt: serverTimestamp()
-        });
+    const item = { ...items[itemIdx] };
+    const currentQty = Number(item.qty || item.quantity || 1);
+    const price = Number(item.price || item.harga || 0);
+    const nextQty = currentQty + delta;
+
+    if (nextQty <= 0) {
+      const confirmDelete = confirm(`Hapus menu "${item.name || item.nama || 'ini'}" dari pesanan?`);
+      if (!confirmDelete) return;
+
+      // Hapus item dari array pesanan
+      items.splice(itemIdx, 1);
+
+      // Jika seluruh item tiket habis, hapus dokumen tiket dari Firestore
+      if (items.length === 0) {
+        await deleteDoc(ticketRef);
+        showToast('Pesanan telah dihapus karena seluruh menu ditiadakan.', 'info');
+        return;
       }
+    } else {
+      item.qty = Math.min(99, nextQty);
+      item.subtotal = item.qty * price;
+      items[itemIdx] = item;
     }
 
-    showToast('Perubahan pesanan berhasil disimpan ke database!', 'success');
-    closeEditOrderModal();
+    // Hitung ulang totalHarga tiket
+    const newTotal = items.reduce((sum, it) => {
+      const p = Number(it.price || it.harga || 0);
+      const q = Number(it.qty || it.quantity || 1);
+      return sum + (p * q);
+    }, 0);
+
+    // Sanitasi items untuk Firestore
+    const sanitizedItems = items.map((it) => ({
+      id: String(it.id || ''),
+      name: String(it.name || it.nama || 'Menu'),
+      qty: Number(it.qty || it.quantity || 1),
+      price: Number(it.price || it.harga || 0),
+      subtotal: Number(it.price || it.harga || 0) * Number(it.qty || it.quantity || 1),
+      note: String(it.note || it.catatan || '').trim()
+    }));
+
+    await updateDoc(ticketRef, {
+      items: sanitizedItems,
+      totalHarga: Number(newTotal),
+      updatedAt: serverTimestamp()
+    });
+
+    showToast(nextQty <= 0 ? 'Menu dihapus dari pesanan' : `Jumlah menu diubah (${nextQty})`, 'success');
   } catch (err) {
-    console.error('Gagal memperbarui pesanan di Firestore:', err);
-    alert('Gagal menyimpan perubahan pesanan: ' + (err.message || 'Kesalahan jaringan.'));
+    console.error('Gagal memperbarui pesanan secara inline:', err);
+    alert('Gagal mengupdate pesanan: ' + (err.message || 'Kesalahan koneksi.'));
   } finally {
-    if (dom.btnSaveEditOrder) {
-      dom.btnSaveEditOrder.disabled = false;
-      dom.btnSaveEditOrder.textContent = '💾 Simpan Perubahan Pesanan';
+    if (triggerBtn) {
+      triggerBtn.disabled = false;
     }
+    isInlineUpdating = false;
   }
 }
+
+// Fungsi stub aman untuk menjaga kompatibilitas jika ada pemanggilan lama
+function openEditOrderModal() {}
+function closeEditOrderModal() {}
+function handleSaveOrderEdits() {}
 
 /* --------------------------------------------------------------------------
    5. MODAL PEMBAYARAN TUNAI (HITUNG KEMBALIAN REAL-TIME)
@@ -2568,6 +2482,7 @@ function init() {
   // Tombol Escape keyboard untuk menutup modal
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      closeCategoryPickerModal();
       const m = dom.rekapModal || document.getElementById('rekap-modal');
       if (m && (m.classList.contains('active') || m.style.display !== 'none')) {
         closeRekapModal();
@@ -2578,6 +2493,23 @@ function init() {
   // Tombol Matikan Alarm Sirine Pesanan Baru
   if (dom.btnStopAlarm) {
     dom.btnStopAlarm.addEventListener('click', stopEmergencyAlarm);
+  }
+
+  // Category Picker Modal Events
+  if (dom.btnSelectCategory) {
+    dom.btnSelectCategory.addEventListener('click', openCategoryPickerModal);
+  }
+  if (dom.btnCloseCategoryPicker) {
+    dom.btnCloseCategoryPicker.addEventListener('click', closeCategoryPickerModal);
+  }
+  if (dom.btnCancelCategoryPicker) {
+    dom.btnCancelCategoryPicker.addEventListener('click', closeCategoryPickerModal);
+  }
+  const modalCatEl = dom.modalCategoryPicker || document.getElementById('modal-category-picker');
+  if (modalCatEl) {
+    modalCatEl.addEventListener('click', (e) => {
+      if (e.target === modalCatEl) closeCategoryPickerModal();
+    });
   }
 
   // Search Input Events
