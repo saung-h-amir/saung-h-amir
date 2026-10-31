@@ -1020,14 +1020,23 @@ function setupCashierBillsListener() {
     // PENGGABUNGAN MEJA OTOMATIS
     const tableGroups = {};
     orders.forEach((order) => {
+      const isReservasiUnassigned = (order.isReservasi || order.tipePesanan === 'Reservasi' || order.serviceType === 'reservasi' || order.orderType === 'reservasi') &&
+        (!order.nomorMeja || order.nomorMeja === 'Reservasi Saung' || String(order.nomorMeja).toLowerCase().includes('reservasi'));
+
+      const isTakeAwayOrder = (order.nomorMeja === 'Take-Away' || order.nomorMeja === 'Take-Away (Bungkus)' || order.orderType === 'take_away' || order.serviceType === 'take-away' || order.tipePesanan === 'Take-Away') && !order.isOjol;
+
       const groupKey = order.isOjol
         ? `Ojol-${order.kodeOjol || order.kodeReferensi || order.id}`
-        : order.nomorMeja;
+        : isReservasiUnassigned
+          ? `Reservasi-${order.id}`
+          : isTakeAwayOrder
+            ? `TakeAway-${order.id}`
+            : (order.nomorMeja || `Order-${order.id}`);
 
       if (!tableGroups[groupKey]) {
         tableGroups[groupKey] = {
           groupKey: groupKey,
-          nomorMeja: order.nomorMeja,
+          nomorMeja: order.nomorMeja || (isReservasiUnassigned ? 'Reservasi Saung' : (isTakeAwayOrder ? 'Take-Away' : 'Meja')),
           isOjol: Boolean(order.isOjol),
           kodeOjol: order.kodeOjol || order.kodeReferensi || '',
           tickets: [],
@@ -1118,9 +1127,21 @@ function renderCashierBills(groups) {
 
     card.className = `bill-card ${isReservasi ? 'bill-card-reservasi' : ''} ${group.isOjol ? 'bill-card-ojol' : ''}`;
 
+    const isReservasiUnassigned = isReservasi && (
+      !group.nomorMeja || 
+      group.nomorMeja === 'Reservasi Saung' || 
+      String(group.nomorMeja).toLowerCase().includes('reservasi')
+    );
+
     const displayTitle = group.isOjol
       ? `🛵 [GOFOOD - ${group.kodeOjol || 'Driver'}]`
-      : group.nomorMeja;
+      : isReservasiUnassigned
+        ? '📅 Reservasi Saung (Belum Ada Meja)'
+        : (group.nomorMeja || 'Tanpa Meja');
+
+    const currentTableDisplay = isReservasiUnassigned
+      ? ''
+      : (group.nomorMeja || '');
 
     // Konsolidasikan daftar menu
     const mergedItems = [];
@@ -1183,8 +1204,22 @@ function renderCashierBills(groups) {
         </div>
       </header>
 
-      <!-- Panel Data Pelanggan & Edit In-Line (Nama, Rombongan, Catatan) -->
+      <!-- Panel Data Pelanggan & Edit In-Line (Nomor Meja, Nama, Rombongan, Catatan) -->
       <div class="bill-customer-info-section">
+        <div class="customer-inline-field field-nomor-meja">
+          <span class="inline-field-label">🪑 No. Meja:</span>
+          <div class="inline-input-box">
+            <input 
+              type="text" 
+              class="inline-editable-input input-meja" 
+              data-field="tableNumber" 
+              value="${escapeHtml(currentTableDisplay)}" 
+              placeholder="${isReservasi ? 'Set Meja (contoh: Meja 4)...' : 'Set Nomor Meja (Meja 1-15)...'}" 
+              title="Klik untuk langsung ganti nomor meja"
+            >
+          </div>
+        </div>
+
         <div class="customer-inline-field">
           <span class="inline-field-label">👤 Pemesan:</span>
           <div class="inline-input-box">
@@ -1280,8 +1315,32 @@ function renderCashierBills(groups) {
 
       input.addEventListener('blur', async () => {
         const field = input.getAttribute('data-field');
-        const newVal = input.value.trim();
+        let newVal = input.value.trim();
         const origVal = input.getAttribute('data-original-val') || '';
+
+        // Auto-format dan validasi nomor meja
+        if (field === 'tableNumber') {
+          if (!newVal) {
+            if (isReservasi) {
+              if (!origVal) return;
+              newVal = 'Reservasi Saung';
+            } else {
+              input.value = origVal;
+              showToast('Nomor meja tidak boleh kosong.', 'warning');
+              return;
+            }
+          } else {
+            // Jika kasir hanya ketik angka (misal "4" atau "04") -> format jadi "Meja 4"
+            if (/^\d+$/.test(newVal)) {
+              newVal = `Meja ${parseInt(newVal, 10)}`;
+              input.value = newVal;
+            } else if (/^meja\s*\d+$/i.test(newVal)) {
+              const num = parseInt(newVal.replace(/\D/g, ''), 10);
+              newVal = `Meja ${num}`;
+              input.value = newVal;
+            }
+          }
+        }
 
         if (newVal === origVal) return;
 
@@ -1349,22 +1408,41 @@ async function handleInlineUpdateCustomerField(group, field, newValue, inputEl) 
 
   try {
     for (const ticket of group.tickets) {
+      const isReservasi = ticket.tipePesanan === 'Reservasi' || 
+                          ticket.serviceType === 'reservasi' || 
+                          ticket.orderType === 'reservasi' || 
+                          Boolean(ticket.isReservasi);
+
+      let finalValue = newValue;
+      if (field === 'tableNumber') {
+        if (!finalValue && isReservasi) {
+          finalValue = 'Reservasi Saung';
+        }
+      }
+
       const updateData = {
-        [field]: newValue,
+        [field]: finalValue,
         updatedAt: serverTimestamp()
       };
 
       // Sinkronkan nama field padanan
       if (field === 'customerName') {
-        updateData.namaPemesan = newValue;
+        updateData.namaPemesan = finalValue;
       } else if (field === 'groupName') {
-        updateData.namaRombongan = newValue;
+        updateData.namaRombongan = finalValue;
       } else if (field === 'notes') {
-        updateData.catatanKhusus = newValue;
-        updateData.customerNotes = newValue;
+        updateData.catatanKhusus = finalValue;
+        updateData.customerNotes = finalValue;
+      } else if (field === 'tableNumber') {
+        updateData.nomorMeja = finalValue;
+        updateData.tableNumber = finalValue;
       }
 
       await updateDoc(doc(db, 'orders', ticket.id), updateData);
+    }
+
+    if (field === 'tableNumber') {
+      group.nomorMeja = newValue;
     }
 
     if (inputEl) {
@@ -1374,7 +1452,11 @@ async function handleInlineUpdateCustomerField(group, field, newValue, inputEl) 
       setTimeout(() => inputEl.classList.remove('inline-update-success'), 1200);
     }
 
-    const fieldLabel = field === 'customerName' ? 'Nama Pemesan' : (field === 'groupName' ? 'Nama Rombongan' : 'Catatan');
+    const fieldLabel = field === 'tableNumber'
+      ? 'Nomor Meja'
+      : (field === 'customerName' 
+          ? 'Nama Pemesan' 
+          : (field === 'groupName' ? 'Nama Rombongan' : 'Catatan'));
     showToast(`${fieldLabel} berhasil diperbarui!`, 'success');
   } catch (err) {
     console.error('Gagal memperbarui data pelanggan:', err);
