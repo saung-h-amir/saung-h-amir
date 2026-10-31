@@ -203,6 +203,21 @@ const dom = {
   rekapCardsContainer: document.getElementById('rekap-cards-container'),
   btnDownloadCsv: document.getElementById('btn-download-csv'),
 
+  // Modal Batalkan / Hapus Transaksi Rekap
+  modalBatalTransaksi: document.getElementById('modal-batal-transaksi'),
+  btnCloseModalBatal: document.getElementById('btn-close-modal-batal'),
+  btnCancelBatalDialog: document.getElementById('btn-cancel-batal-dialog'),
+  btnConfirmBatalOrder: document.getElementById('btn-confirm-batal-order'),
+  btnConfirmBatalText: document.getElementById('btn-confirm-batal-text'),
+  modalBatalTitle: document.getElementById('modal-batal-title'),
+  modalBatalSub: document.getElementById('modal-batal-sub'),
+  batalTargetMeja: document.getElementById('batal-target-meja'),
+  batalTargetWaktu: document.getElementById('batal-target-waktu'),
+  batalTargetMetode: document.getElementById('batal-target-metode'),
+  batalTargetTotal: document.getElementById('batal-target-total'),
+  batalTargetItems: document.getElementById('batal-target-items'),
+  batalReasonInput: document.getElementById('batal-reason-input'),
+
   // Thermal Print & Toast
   printArea: document.getElementById('thermal-print-area'),
   toast: document.getElementById('pos-toast')
@@ -1512,10 +1527,31 @@ function closePaymentSuccessModal() {
 /* --------------------------------------------------------------------------
    6. TAB 3: REKAP PEMASUKAN DENGAN RENTANG WAKTU (HARIAN / MINGGUAN)
    -------------------------------------------------------------------------- */
+function isOrderCancelled(o) {
+  if (!o) return false;
+  return (
+    o.paymentStatus === 'dibatalkan' ||
+    o.status === 'dibatalkan' ||
+    Boolean(o.isCancelled) ||
+    o.paymentStatus === 'batal' ||
+    o.status === 'batal'
+  );
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function setupDailyRecapListener() {
   const q = query(
     collection(db, 'orders'),
-    where('paymentStatus', '==', 'lunas')
+    where('paymentStatus', 'in', ['lunas', 'dibatalkan'])
   );
 
   onSnapshot(q, (snapshot) => {
@@ -1601,8 +1637,8 @@ function applyRekapFilter() {
 
   // Urutkan transaksi terbaru di atas
   filtered.sort((a, b) => {
-    const tA = a.paidAt ? (a.paidAt.toMillis ? a.paidAt.toMillis() : new Date(a.paidAt).getTime()) : 0;
-    const tB = b.paidAt ? (b.paidAt.toMillis ? b.paidAt.toMillis() : new Date(b.paidAt).getTime()) : 0;
+    const tA = a.paidAt ? (a.paidAt.toMillis ? a.paidAt.toMillis() : new Date(a.paidAt).getTime()) : (a.createdAt ? (a.createdAt.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime()) : 0);
+    const tB = b.paidAt ? (b.paidAt.toMillis ? b.paidAt.toMillis() : new Date(b.paidAt).getTime()) : (b.createdAt ? (b.createdAt.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime()) : 0);
     return tB - tA;
   });
 
@@ -1614,11 +1650,25 @@ function calculateAndRenderRekap(orders, startStr, endStr) {
   let totalQris = 0, countQris = 0;
   let totalDebit = 0, countDebit = 0;
   let grandTotal = 0;
+  let countLunas = 0;
+  let countBatal = 0;
+  let totalBatal = 0;
 
   orders.forEach((o) => {
+    const isBatal = isOrderCancelled(o);
     const amount = Number(o.totalHarga || 0);
     const method = String(o.paymentMethod || 'Tunai');
+
+    if (isBatal) {
+      countBatal += 1;
+      totalBatal += amount;
+      // Transaksi dibatalkan: JANGAN masukkan ke perhitungan omzet
+      return;
+    }
+
+    // Transaksi lunas aktif: masukkan ke omzet
     grandTotal += amount;
+    countLunas += 1;
 
     if (method.toLowerCase().includes('qris')) {
       totalQris += amount;
@@ -1642,7 +1692,13 @@ function calculateAndRenderRekap(orders, startStr, endStr) {
   if (dom.kpiDebitCount) dom.kpiDebitCount.textContent = `${countDebit} transaksi`;
 
   if (dom.kpiGrandTotal) dom.kpiGrandTotal.textContent = formatRupiah(grandTotal);
-  if (dom.kpiTotalTransaksi) dom.kpiTotalTransaksi.textContent = `Total ${orders.length} transaksi selesai`;
+  if (dom.kpiTotalTransaksi) {
+    if (countBatal > 0) {
+      dom.kpiTotalTransaksi.textContent = `${countLunas} transaksi lunas (${countBatal} dibatalkan)`;
+    } else {
+      dom.kpiTotalTransaksi.textContent = `Total ${countLunas} transaksi selesai`;
+    }
+  }
 
   if (dom.badgeRekapTotal) dom.badgeRekapTotal.textContent = formatRupiah(grandTotal);
 
@@ -1654,13 +1710,14 @@ function calculateAndRenderRekap(orders, startStr, endStr) {
     container.innerHTML = `
       <div class="rekap-empty-state">
         <span class="rekap-empty-icon">🧾</span>
-        <p>Tidak ada transaksi lunas pada rentang tanggal yang dipilih.</p>
+        <p>Tidak ada riwayat transaksi pada rentang tanggal yang dipilih.</p>
       </div>
     `;
     return;
   }
 
   container.innerHTML = orders.map((o, idx) => {
+    const isBatal = isOrderCancelled(o);
     const waktu = formatDate(o.paidAt || o.createdAt);
     const isOjol = Boolean(o.isOjol);
     const mejaText = isOjol
@@ -1674,7 +1731,7 @@ function calculateAndRenderRekap(orders, startStr, endStr) {
     const method = o.paymentMethod || 'Tunai';
 
     return `
-      <div class="rekap-tx-card">
+      <div class="rekap-tx-card ${isBatal ? 'is-cancelled' : ''}" data-id="${o.id}">
         <div class="rekap-card-top">
           <div class="rekap-card-datetime">
             <span class="rekap-card-date">📅 ${waktu}</span>
@@ -1683,29 +1740,74 @@ function calculateAndRenderRekap(orders, startStr, endStr) {
           <div class="rekap-card-meta">
             <span class="rekap-card-table ${isOjol ? 'is-ojol' : ''}">${mejaText}</span>
             <span class="rekap-card-method-badge ${method}">💳 ${method}</span>
+            ${isBatal ? `<span class="rekap-badge-batal">❌ DIBATALKAN</span>` : ''}
           </div>
         </div>
 
+        ${isBatal ? `
+          <div class="rekap-card-batal-info">
+            <div class="batal-info-header">
+              <span aria-hidden="true">⚠️</span>
+              <strong>Pesanan Dibatalkan</strong>
+            </div>
+            <div class="batal-info-reason">
+              <span class="batal-reason-label">Alasan:</span>
+              <span class="batal-reason-text">"${escapeHtml(o.alasanBatal || 'Pesanan dibatalkan oleh kasir')}"</span>
+            </div>
+            <div class="batal-info-meta">
+              🕒 Dibatalkan: ${formatDate(o.batalAt || o.updatedAt || o.paidAt)} ${o.batalBy ? `oleh ${escapeHtml(o.batalBy)}` : ''}
+            </div>
+          </div>
+        ` : ''}
+
         <div class="rekap-card-body">
-          <div class="rekap-card-menu-label">Pesanan:</div>
-          <div class="rekap-card-items-list">${itemsSummary}</div>
+          <div class="rekap-card-menu-label ${isBatal ? 'text-red' : ''}">
+            ${isBatal ? 'Daftar Menu (Batal):' : 'Pesanan:'}
+          </div>
+          <div class="rekap-card-items-list ${isBatal ? 'is-cancelled' : ''}">${itemsSummary}</div>
         </div>
 
         <div class="rekap-card-bottom">
           <div class="rekap-total-wrap">
-            <span class="rekap-card-total-label">Total Tagihan:</span>
-            <strong class="rekap-card-total-value">${formatRupiah(o.totalHarga)}</strong>
+            <span class="rekap-card-total-label">${isBatal ? 'Total Tagihan (Batal):' : 'Total Tagihan:'}</span>
+            ${isBatal
+              ? `<div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+                   <s class="rekap-card-total-value is-cancelled">${formatRupiah(o.totalHarga)}</s>
+                   <span class="rekap-card-omzet-tag is-cancelled">❌ Tidak Masuk Omzet</span>
+                 </div>`
+              : `<strong class="rekap-card-total-value">${formatRupiah(o.totalHarga)}</strong>`
+            }
           </div>
-          <button type="button" class="btn-rekap-reprint" data-idx="${idx}" title="Cetak ulang struk pembayaran transaksi ini">
-            <span>🖨️</span>
-            <span>Cetak Ulang Struk</span>
-          </button>
+          <div class="rekap-card-actions">
+            ${isBatal
+              ? `<button type="button" class="btn-rekap-reprint" data-idx="${idx}" title="Cetak struk dengan keterangan DIBATALKAN">
+                   <span>🖨️</span>
+                   <span>Struk (Batal)</span>
+                 </button>
+                 <button type="button" class="btn-rekap-edit-reason" data-idx="${idx}" title="Ubah alasan pembatalan transaksi ini">
+                   <span>✏️</span>
+                   <span>Ubah Alasan</span>
+                 </button>
+                 <button type="button" class="btn-rekap-restore" data-idx="${idx}" title="Pulihkan transaksi ini kembali ke Lunas">
+                   <span>↩️</span>
+                   <span>Pulihkan</span>
+                 </button>`
+              : `<button type="button" class="btn-rekap-reprint" data-idx="${idx}" title="Cetak ulang struk pembayaran transaksi ini">
+                   <span>🖨️</span>
+                   <span>Cetak Ulang Struk</span>
+                 </button>
+                 <button type="button" class="btn-rekap-cancel-order" data-idx="${idx}" title="Batalkan pesanan ini dan kurangi omzet">
+                   <span>❌</span>
+                   <span>Batalkan Pesanan</span>
+                 </button>`
+            }
+          </div>
         </div>
       </div>
     `;
   }).join('');
 
-  // Pasang event listener tombol Cetak Ulang Struk di setiap kartu
+  // Pasang event listeners pada tombol di setiap kartu transaksi
   container.querySelectorAll('.btn-rekap-reprint').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1713,11 +1815,14 @@ function calculateAndRenderRekap(orders, startStr, endStr) {
       const o = orders[idx];
       if (!o) return;
 
+      const isBatal = isOrderCancelled(o);
       const group = {
         nomorMeja: o.nomorMeja || 'Take-Away',
         isOjol: Boolean(o.isOjol),
         kodeOjol: o.kodeOjol || o.kodeReferensi || '',
-        totalHarga: Number(o.totalHarga) || 0
+        totalHarga: Number(o.totalHarga) || 0,
+        isCancelled: isBatal,
+        alasanBatal: o.alasanBatal || ''
       };
 
       const mergedItems = (o.items || []).map((it) => ({
@@ -1728,9 +1833,200 @@ function calculateAndRenderRekap(orders, startStr, endStr) {
         note: it.note || ''
       }));
 
-      printCustomerReceipt(group, mergedItems, o.cashReceived || null, o.changeAmount || null);
+      printCustomerReceipt(group, mergedItems, o.cashReceived || null, o.changeAmount || null, isBatal, o.alasanBatal || '');
     });
   });
+
+  // Tombol Batalkan Pesanan (Buka Modal Input Alasan)
+  container.querySelectorAll('.btn-rekap-cancel-order').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      const o = orders[idx];
+      if (o) openBatalOrderModal(o, false);
+    });
+  });
+
+  // Tombol Ubah Alasan
+  container.querySelectorAll('.btn-rekap-edit-reason').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      const o = orders[idx];
+      if (o) openBatalOrderModal(o, true);
+    });
+  });
+
+  // Tombol Pulihkan Transaksi (Restore back to Lunas)
+  container.querySelectorAll('.btn-rekap-restore').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      const o = orders[idx];
+      if (o) handleRestoreOrder(o);
+    });
+  });
+}
+
+/* --------------------------------------------------------------------------
+   6b. KONTROLER MODAL BATALKAN PESANAN REKAP / RESTORE TRANSAKSI
+   -------------------------------------------------------------------------- */
+let activeBatalOrder = null;
+let isEditingBatalReasonOnly = false;
+
+function openBatalOrderModal(order, isEditReason = false) {
+  if (!order) return;
+  activeBatalOrder = order;
+  isEditingBatalReasonOnly = Boolean(isEditReason);
+
+  const displayTitle = order.isOjol
+    ? `🛵 GoFood (${order.kodeOjol || order.kodeReferensi || 'Driver'})`
+    : (order.nomorMeja || 'Take-Away');
+
+  if (dom.batalTargetMeja) dom.batalTargetMeja.textContent = displayTitle;
+  if (dom.batalTargetWaktu) dom.batalTargetWaktu.textContent = formatDate(order.paidAt || order.createdAt);
+  if (dom.batalTargetMetode) {
+    dom.batalTargetMetode.textContent = order.paymentMethod || 'Tunai';
+    dom.batalTargetMetode.className = `batal-summary-val badge-method ${order.paymentMethod || 'Tunai'}`;
+  }
+  if (dom.batalTargetTotal) {
+    dom.batalTargetTotal.textContent = formatRupiah(order.totalHarga);
+  }
+
+  if (dom.batalTargetItems) {
+    const itemsText = (order.items || [])
+      .map((it) => `• ${it.qty || 1}x ${it.name || it.nama || 'Menu'}${it.note ? ` (${it.note})` : ''} - ${formatRupiah((it.qty || 1) * (it.price || 0))}`)
+      .join('<br>');
+    dom.batalTargetItems.innerHTML = itemsText || '<em>Tidak ada rincian menu</em>';
+  }
+
+  if (dom.batalReasonInput) {
+    dom.batalReasonInput.value = order.alasanBatal || '';
+  }
+
+  if (isEditReason) {
+    if (dom.modalBatalTitle) dom.modalBatalTitle.textContent = '✏️ Ubah Alasan Pembatalan';
+    if (dom.modalBatalSub) dom.modalBatalSub.textContent = `Perbarui keterangan alasan pembatalan untuk ${displayTitle}`;
+    if (dom.btnConfirmBatalText) dom.btnConfirmBatalText.textContent = 'Simpan Perubahan Alasan';
+  } else {
+    if (dom.modalBatalTitle) dom.modalBatalTitle.textContent = '❌ Batalkan Transaksi';
+    if (dom.modalBatalSub) dom.modalBatalSub.textContent = `Pesanan akan ditandai dibatalkan dan otomatis mengurangi omzet`;
+    if (dom.btnConfirmBatalText) dom.btnConfirmBatalText.textContent = 'Konfirmasi Batalkan Pesanan';
+  }
+
+  if (dom.modalBatalTransaksi) {
+    dom.modalBatalTransaksi.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  setTimeout(() => {
+    if (dom.batalReasonInput) dom.batalReasonInput.focus();
+  }, 100);
+}
+
+function closeBatalOrderModal() {
+  if (dom.modalBatalTransaksi) {
+    dom.modalBatalTransaksi.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+  activeBatalOrder = null;
+  isEditingBatalReasonOnly = false;
+}
+
+async function handleConfirmBatalOrder() {
+  if (!activeBatalOrder) return;
+  const reason = (dom.batalReasonInput ? dom.batalReasonInput.value : '').trim();
+
+  if (!reason) {
+    alert('Harap ketikkan alasan mengapa pesanan ini dibatalkan!');
+    if (dom.batalReasonInput) dom.batalReasonInput.focus();
+    return;
+  }
+
+  const order = activeBatalOrder;
+  const mejaText = order.isOjol
+    ? `GoFood (${order.kodeOjol || 'Driver'})`
+    : (order.nomorMeja || 'Take-Away');
+
+  if (isEditingBatalReasonOnly) {
+    try {
+      if (dom.btnConfirmBatalOrder) dom.btnConfirmBatalOrder.disabled = true;
+      await updateDoc(doc(db, 'orders', order.id), {
+        alasanBatal: reason,
+        alasanUpdatedAt: serverTimestamp()
+      });
+      showToast('Alasan pembatalan pesanan berhasil diperbarui.', 'success');
+      closeBatalOrderModal();
+    } catch (err) {
+      console.error('Gagal memperbarui alasan pembatalan:', err);
+      alert('Gagal menyimpan perubahan alasan: ' + (err.message || 'Kesalahan jaringan'));
+    } finally {
+      if (dom.btnConfirmBatalOrder) dom.btnConfirmBatalOrder.disabled = false;
+    }
+    return;
+  }
+
+  const confirmMsg = `Yakin ingin membatalkan pesanan ${mejaText} senilai ${formatRupiah(order.totalHarga)}?\n\n` +
+    `Alasan Pembatalan:\n"${reason}"\n\n` +
+    `Perhatian: Nominal ${formatRupiah(order.totalHarga)} otomatis MENGURANGI total omzet rekap, namun data pesanan tetap tersimpan dengan tanda MERAH (DIBATALKAN).`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    if (dom.btnConfirmBatalOrder) {
+      dom.btnConfirmBatalOrder.disabled = true;
+      if (dom.btnConfirmBatalText) dom.btnConfirmBatalText.textContent = 'Membatalkan...';
+    }
+
+    await updateDoc(doc(db, 'orders', order.id), {
+      paymentStatus: 'dibatalkan',
+      status: 'dibatalkan',
+      isCancelled: true,
+      alasanBatal: reason,
+      batalAt: serverTimestamp(),
+      batalBy: 'Kasir',
+      updatedAt: serverTimestamp()
+    });
+
+    showToast(`Pesanan ${mejaText} berhasil dibatalkan dan omzet telah berkurang.`, 'error');
+    closeBatalOrderModal();
+  } catch (err) {
+    console.error('Gagal membatalkan pesanan di Firestore:', err);
+    alert('Gagal membatalkan pesanan: ' + (err.message || 'Kesalahan jaringan'));
+  } finally {
+    if (dom.btnConfirmBatalOrder) {
+      dom.btnConfirmBatalOrder.disabled = false;
+      if (dom.btnConfirmBatalText) dom.btnConfirmBatalText.textContent = 'Konfirmasi Batalkan Pesanan';
+    }
+  }
+}
+
+async function handleRestoreOrder(order) {
+  if (!order) return;
+  const mejaText = order.isOjol
+    ? `GoFood (${order.kodeOjol || 'Driver'})`
+    : (order.nomorMeja || 'Take-Away');
+
+  const confirmMsg = `Pulihkan transaksi ${mejaText} senilai ${formatRupiah(order.totalHarga)} kembali menjadi LUNAS?\n\n` +
+    `Nominal ini akan kembali ditambahkan ke perhitungan omzet penjualan.`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    await updateDoc(doc(db, 'orders', order.id), {
+      paymentStatus: 'lunas',
+      status: 'lunas',
+      isCancelled: false,
+      restoredAt: serverTimestamp(),
+      restoredBy: 'Kasir',
+      updatedAt: serverTimestamp()
+    });
+
+    showToast(`Transaksi ${mejaText} berhasil dipulihkan kembali ke status LUNAS!`, 'success');
+  } catch (err) {
+    console.error('Gagal memulihkan transaksi:', err);
+    alert('Gagal memulihkan transaksi: ' + (err.message || 'Kesalahan jaringan'));
+  }
 }
 
 function downloadFilteredCsv() {
@@ -1751,7 +2047,7 @@ function downloadFilteredCsv() {
   }
 
   if (filtered.length === 0) {
-    alert('Tidak ada data transaksi lunas pada rentang tanggal yang dipilih untuk diunduh.');
+    alert('Tidak ada data transaksi pada rentang tanggal yang dipilih untuk diunduh.');
     return;
   }
 
@@ -1762,9 +2058,10 @@ function downloadFilteredCsv() {
   });
 
   let csvContent = '\uFEFF'; // UTF-8 BOM agar rapi di Microsoft Excel
-  csvContent += '"No","Waktu Transaksi","Nomor Meja / Ojol","Jenis Layanan","Rincian Menu","Metode Pembayaran","Uang Diterima (Rp)","Kembalian (Rp)","Total Tagihan (Rp)"\r\n';
+  csvContent += '"No","Waktu Transaksi","Nomor Meja / Ojol","Jenis Layanan","Rincian Menu","Metode Pembayaran","Uang Diterima (Rp)","Kembalian (Rp)","Total Tagihan Masuk Omzet (Rp)","Nominal Transaksi (Rp)","Status Transaksi","Alasan Pembatalan"\r\n';
 
   filtered.forEach((o, index) => {
+    const isBatal = isOrderCancelled(o);
     const waktu = formatDate(o.paidAt || o.createdAt);
     const meja = (o.isOjol ? `GoFood (${o.kodeOjol || 'Driver'})` : o.nomorMeja).replace(/"/g, '""');
     const tipe = (o.orderType || (o.isOjol ? 'take_away' : 'dine_in')).replace(/"/g, '""');
@@ -1775,9 +2072,12 @@ function downloadFilteredCsv() {
     const metode = (o.paymentMethod || 'Tunai').replace(/"/g, '""');
     const cashRec = Number(o.cashReceived || 0);
     const changeAmt = Number(o.changeAmount || 0);
-    const total = Number(o.totalHarga || 0);
+    const originalTotal = Number(o.totalHarga || 0);
+    const omzetTotal = isBatal ? 0 : originalTotal;
+    const statusText = isBatal ? 'DIBATALKAN' : 'LUNAS';
+    const alasanText = (o.alasanBatal || (isBatal ? 'Dibatalkan oleh kasir' : '-')).replace(/"/g, '""');
 
-    csvContent += `"${index + 1}","${waktu}","${meja}","${tipe}","${rincian}","${metode}",${cashRec},${changeAmt},${total}\r\n`;
+    csvContent += `"${index + 1}","${waktu}","${meja}","${tipe}","${rincian}","${metode}",${cashRec},${changeAmt},${omzetTotal},${originalTotal},"${statusText}","${alasanText}"\r\n`;
   });
 
   const rangeLabel = startStr && endStr ? `${startStr}_sd_${endStr}` : 'Semua';
@@ -1795,7 +2095,7 @@ function downloadFilteredCsv() {
 /* --------------------------------------------------------------------------
    7. CETAK STRUK BLUETOOTH THERMAL VIA NAVIGATOR.SHARE() & RAWBT
    -------------------------------------------------------------------------- */
-function formatThermalReceiptText(group, mergedItems, cashReceived = null, changeAmount = null) {
+function formatThermalReceiptText(group, mergedItems, cashReceived = null, changeAmount = null, isCancelled = false, alasanBatal = '') {
   const line = '--------------------------------';
   const dblLine = '================================';
   const width = 32;
@@ -1829,13 +2129,25 @@ function formatThermalReceiptText(group, mergedItems, cashReceived = null, chang
     center('Khas Masakan Sunda'),
     center('Cisauk, Legok, Tangerang'),
     center('Telp/WA: 0812-1956-9995'),
-    line,
+    line
+  ];
+
+  if (isCancelled) {
+    lines.push(dblLine);
+    lines.push(center('*** PESANAN DIBATALKAN ***'));
+    if (alasanBatal) {
+      lines.push(center(`Alasan: ${alasanBatal}`));
+    }
+    lines.push(dblLine);
+  }
+
+  lines.push(
     row('Waktu   :', waktu),
     row('Layanan :', displayTitle),
     line,
     row('MENU', 'SUBTOTAL'),
     line
-  ];
+  );
 
   mergedItems.forEach((item) => {
     const itemTitle = `${item.qty}x ${item.name}`;
@@ -1850,23 +2162,27 @@ function formatThermalReceiptText(group, mergedItems, cashReceived = null, chang
   });
 
   lines.push(line);
-  lines.push(row('TOTAL TAGIHAN:', formatRupiah(group.totalHarga)));
-
-  if (cashReceived !== null && cashReceived > 0) {
-    lines.push(row('Bayar Tunai  :', formatRupiah(cashReceived)));
-    lines.push(row('Kembalian    :', formatRupiah(changeAmount || 0)));
+  if (isCancelled) {
+    lines.push(row('TOTAL TAGIHAN:', 'Rp 0 (BATAL)'));
+    lines.push(row('Nominal Batal:', formatRupiah(group.totalHarga)));
+  } else {
+    lines.push(row('TOTAL TAGIHAN:', formatRupiah(group.totalHarga)));
+    if (cashReceived !== null && cashReceived > 0) {
+      lines.push(row('Bayar Tunai  :', formatRupiah(cashReceived)));
+      lines.push(row('Kembalian    :', formatRupiah(changeAmount || 0)));
+    }
   }
 
   lines.push(dblLine);
-  lines.push(center('Hatur Nuhun'));
+  lines.push(center(isCancelled ? 'TRANSAKSI INI DIBATALKAN' : 'Hatur Nuhun'));
   lines.push(dblLine);
   lines.push('\n');
 
   return lines.join('\n');
 }
 
-async function printCustomerReceipt(group, mergedItems, cashReceived = null, changeAmount = null) {
-  const strukText = formatThermalReceiptText(group, mergedItems, cashReceived, changeAmount);
+async function printCustomerReceipt(group, mergedItems, cashReceived = null, changeAmount = null, isCancelled = false, alasanBatal = '') {
+  const strukText = formatThermalReceiptText(group, mergedItems, cashReceived, changeAmount, isCancelled, alasanBatal);
   const displayTitle = group.isOjol
     ? `GoFood (${group.kodeOjol || 'Driver'})`
     : (group.nomorMeja || 'Take-Away');
@@ -2370,6 +2686,31 @@ function init() {
   if (dom.btnApplyFilter) dom.btnApplyFilter.addEventListener('click', applyRekapFilter);
   if (dom.btnDownloadCsv) dom.btnDownloadCsv.addEventListener('click', downloadFilteredCsv);
 
+  // Modal Batalkan Transaksi Rekap Events
+  if (dom.btnCloseModalBatal) {
+    dom.btnCloseModalBatal.addEventListener('click', closeBatalOrderModal);
+  }
+  if (dom.btnCancelBatalDialog) {
+    dom.btnCancelBatalDialog.addEventListener('click', closeBatalOrderModal);
+  }
+  if (dom.btnConfirmBatalOrder) {
+    dom.btnConfirmBatalOrder.addEventListener('click', handleConfirmBatalOrder);
+  }
+  if (dom.modalBatalTransaksi) {
+    dom.modalBatalTransaksi.addEventListener('click', (e) => {
+      if (e.target === dom.modalBatalTransaksi) closeBatalOrderModal();
+    });
+  }
+  document.querySelectorAll('.btn-batal-chip[data-reason]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const reason = chip.getAttribute('data-reason');
+      if (dom.batalReasonInput) {
+        dom.batalReasonInput.value = reason;
+        dom.batalReasonInput.focus();
+      }
+    });
+  });
+
   // Initialize Default Rekap Date (Hari Ini)
   setPresetDates('today');
 
@@ -2378,6 +2719,61 @@ function init() {
   setupDailyRecapListener();
   setupNewOrderAlarmListener();
   setupRealtimeMenusListener();
+
+  // Inisialisasi PWA (Service Worker & Tombol Instal)
+  setupPwa();
+}
+
+/* --------------------------------------------------------------------------
+   8. PROGRESSIVE WEB APP (PWA): SERVICE WORKER & INSTALL PROMPT
+   -------------------------------------------------------------------------- */
+let deferredPwaPrompt = null;
+
+function setupPwa() {
+  // 1. Registrasi Service Worker untuk PWA Offline & Installable
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((reg) => {
+          console.log('[PWA] Service Worker terdaftar dengan scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('[PWA] Gagal mendaftarkan Service Worker:', err);
+        });
+    });
+  }
+
+  // 2. Tangkap event beforeinstallprompt
+  const btnInstall = document.getElementById('btn-pwa-install');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPwaPrompt = e;
+    if (btnInstall) {
+      btnInstall.style.display = 'inline-flex';
+    }
+  });
+
+  if (btnInstall) {
+    btnInstall.addEventListener('click', async () => {
+      if (!deferredPwaPrompt) return;
+      deferredPwaPrompt.prompt();
+      const choiceResult = await deferredPwaPrompt.userChoice;
+      if (choiceResult && choiceResult.outcome === 'accepted') {
+        showToast('Aplikasi Kasir berhasil dipasang di layar utama!', 'success');
+        btnInstall.style.display = 'none';
+      }
+      deferredPwaPrompt = null;
+    });
+  }
+
+  window.addEventListener('appinstalled', () => {
+    console.log('[PWA] Aplikasi Kasir berhasil dipasang.');
+    if (btnInstall) {
+      btnInstall.style.display = 'none';
+    }
+    showToast('Aplikasi Kasir kini aktif di HP Anda.', 'success');
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

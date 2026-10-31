@@ -2,9 +2,16 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#16a34a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kasir SAHA">
+  <!-- Ini kunci utama anti-bug zoom -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Kasir POS & Tagihan | Saung H. Amir</title>
   <meta name="description" content="Sistem Point of Sale (POS), Tagihan Meja, Pelunasan Kasir, dan Rekap Pemasukan Saung H. Amir.">
+  <link rel="apple-touch-icon" href="assets/logo-192.png">
   <link rel="stylesheet" href="css/kasir.css">
   <link rel="icon" type="image/jpeg" href="assets/images/logokecil.jpeg">
 </head>
@@ -58,6 +65,9 @@
 
     <!-- Tombol Pintas Header: Rekap Pemasukan Layar Penuh & Tautan Eksternal -->
     <div class="pos-header-actions">
+      <button type="button" id="btn-pwa-install" class="pos-header-pwa-btn" style="display: none;" title="Pasang Aplikasi Kasir ke Layar Utama HP">
+        <span>📲 Pasang Aplikasi</span>
+      </button>
       <button type="button" id="btn-open-rekap-modal" class="pos-header-rekap-btn" title="Buka Layar Penuh Rekap Pemasukan">
         <span class="rekap-btn-icon">📊</span>
         <span>Lihat Rekap Pemasukan</span>
@@ -201,7 +211,7 @@
           <span class="pos-input-pane-sub">Pilih menu dari daftar, atur meja/ojol, lalu kirim ke dapur</span>
         </div>
       </div>
-      <button type="button" id="btn-close-input-pane" class="btn-close-input-pane" title="Kembali ke Layar Kasir">
+      <button type="button" id="btn-close-input-pane" class="btn-close-input-pane btn-close-modal" title="Kembali ke Layar Kasir">
         <span>✕ Tutup / Batal</span>
       </button>
     </div>
@@ -240,7 +250,7 @@
         </div>
 
         <!-- Grid Tombol Menu Super Rapat (HANYA Nama Menu & Harga Hijau) -->
-        <div class="pos-grid-scroll">
+        <div class="pos-grid-scroll katalog-menu-container">
           <div id="pos-menu-grid" class="pos-menu-grid"></div>
         </div>
       </section>
@@ -521,6 +531,93 @@
     </div>
   </div>
 
+  <!-- ====================================================================
+       MODAL BATALKAN PESANAN / HAPUS TRANSAKSI REKAP
+       ==================================================================== -->
+  <div id="modal-batal-transaksi" class="modal-batal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modal-batal-title">
+    <div class="modal-batal-card">
+      <div class="modal-batal-header">
+        <div class="modal-batal-header-text">
+          <span class="modal-batal-icon" aria-hidden="true">⚠️</span>
+          <div>
+            <h3 id="modal-batal-title" class="modal-batal-title">Batalkan Transaksi</h3>
+            <span id="modal-batal-sub" class="modal-batal-sub">Pesanan akan ditandai dibatalkan dan otomatis mengurangi omzet</span>
+          </div>
+        </div>
+        <button type="button" id="btn-close-modal-batal" class="btn-modal-batal-close" title="Tutup Modal" aria-label="Tutup Modal">✕</button>
+      </div>
+
+      <div class="modal-batal-body">
+        <!-- Rincian Transaksi yang akan dibatalkan -->
+        <div class="batal-target-summary">
+          <div class="batal-summary-row">
+            <span class="batal-summary-label">Meja / Layanan:</span>
+            <strong id="batal-target-meja" class="batal-summary-val">-</strong>
+          </div>
+          <div class="batal-summary-row">
+            <span class="batal-summary-label">Waktu Transaksi:</span>
+            <span id="batal-target-waktu" class="batal-summary-val">-</span>
+          </div>
+          <div class="batal-summary-row">
+            <span class="batal-summary-label">Metode Pembayaran:</span>
+            <span id="batal-target-metode" class="batal-summary-val badge-method">-</span>
+          </div>
+          <div class="batal-summary-row">
+            <span class="batal-summary-label">Total Tagihan:</span>
+            <strong id="batal-target-total" class="batal-summary-val text-red">Rp 0</strong>
+          </div>
+          <div class="batal-summary-items">
+            <span class="batal-summary-label">Rincian Menu:</span>
+            <div id="batal-target-items" class="batal-target-items-list">-</div>
+          </div>
+        </div>
+
+        <!-- Peringatan Pengurangan Omzet -->
+        <div class="batal-warning-notice">
+          <span class="warning-icon">📢</span>
+          <div class="warning-text">
+            <strong>Catatan Penting:</strong> Data transaksi <u>TIDAK AKAN HILANG</u> dari database. Transaksi ini akan berubah warna <strong>MERAH</strong> dengan keterangan <strong>DIBATALKAN</strong> pada rekap, dan total tagihan otomatis memotong (mengurangi) omzet penjualan yang sudah masuk.
+          </div>
+        </div>
+
+        <!-- Form Input Alasan Pembatalan -->
+        <div class="batal-form-group">
+          <label for="batal-reason-input" class="batal-form-label">
+            <span>Alasan Pembatalan Pesanan:</span>
+            <strong class="required-mark">* (Wajib diisi)</strong>
+          </label>
+          <textarea 
+            id="batal-reason-input" 
+            class="batal-reason-textarea" 
+            rows="3" 
+            placeholder="Tuliskan alasan pesanan dibatalkan (misal: Pelanggan buru-buru pulang, salah input nomor meja, menu habis di dapur, dll)..." 
+            required></textarea>
+
+          <!-- Preset Alasan Cepat -->
+          <div class="batal-preset-chips">
+            <span class="batal-preset-label">Pilihan Alasan Cepat:</span>
+            <div class="batal-chips-wrap">
+              <button type="button" class="btn-batal-chip" data-reason="Salah input kasir / salah meja">Salah input kasir</button>
+              <button type="button" class="btn-batal-chip" data-reason="Pelanggan batal / pulang mendadak">Pelanggan batal/pulang</button>
+              <button type="button" class="btn-batal-chip" data-reason="Menu masakan habis di dapur">Menu habis di dapur</button>
+              <button type="button" class="btn-batal-chip" data-reason="Komplain kualitas makanan / pesanan">Komplain makanan</button>
+              <button type="button" class="btn-batal-chip" data-reason="Pindah meja / diinput ulang">Pindah meja</button>
+              <button type="button" class="btn-batal-chip" data-reason="Transaksi duplikat / double input">Transaksi ganda</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-batal-footer">
+        <button type="button" id="btn-cancel-batal-dialog" class="btn-batal-cancel">Kembali / Tutup</button>
+        <button type="button" id="btn-confirm-batal-order" class="btn-batal-confirm">
+          <span>❌</span>
+          <span id="btn-confirm-batal-text">Konfirmasi Batalkan Pesanan</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating Checkout Bar (RestoQu Style, Melayang di atas Bottom Nav jika keranjang terisi) -->
   <aside id="floating-checkout-bar" class="restoqu-floating-checkout-bar" style="display: none;">
     <div class="floating-checkout-info">
@@ -573,5 +670,11 @@
   <!-- Scripts: Logika Kasir Modular ES Module Tunggal -->
   <script type="module" src="js/kasir.js"></script>
 
+  <!-- Registrasi Service Worker PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
 </body>
 </html>

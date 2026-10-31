@@ -259,6 +259,34 @@ body {
   font-weight: 900;
 }
 
+/* Tombol PWA Install di Header */
+.pos-header-pwa-btn {
+  background: linear-gradient(135deg, #15803d, #16a34a);
+  color: #ffffff;
+  border: 2px solid #86efac;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.pos-header-pwa-btn:hover {
+  background: linear-gradient(135deg, #166534, #15803d);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(22, 163, 74, 0.45);
+}
+
+.pos-header-pwa-btn:active {
+  transform: translateY(0);
+}
+
 /* --------------------------------------------------------------------------
    NAVIGASI TAB ATAS LAMA: DISEMBUNYIKAN (DIGANTIKAN RESTOQU BOTTOM NAV)
    -------------------------------------------------------------------------- */
@@ -317,27 +345,35 @@ body {
   display: block;
 }
 
+.btn-close-modal,
 .btn-close-input-pane {
+  min-height: 48px !important;
+  min-width: 48px !important;
+  z-index: 10000 !important;
+  cursor: pointer !important;
   background: #dc2626;
   color: #ffffff;
   border: 1px solid #ef4444;
   padding: 8px 16px;
   border-radius: 8px;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 800;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   transition: all 0.15s ease;
   box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+  position: relative;
 }
 
+.btn-close-modal:hover,
 .btn-close-input-pane:hover {
   background: #b91c1c;
   transform: translateY(-1px);
 }
 
+.btn-close-modal:active,
 .btn-close-input-pane:active {
   transform: translateY(1px);
 }
@@ -720,10 +756,11 @@ body {
 /* --------------------------------------------------------------------------
    WADAH DAFTAR MENU (RESTOQU COMPACT FLAT LIST)
    -------------------------------------------------------------------------- */
+.katalog-menu-container,
 .pos-grid-scroll {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  flex: 1 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
   padding: 0 !important;
   width: 100%;
   max-width: 100%;
@@ -2076,6 +2113,467 @@ body {
   color: #15803d;
 }
 
+/* --------------------------------------------------------------------------
+   Transaksi Rekap Dibatalkan (Warna Merah & Nonaktif dari Omzet)
+   -------------------------------------------------------------------------- */
+.rekap-tx-card.is-cancelled {
+  background: #fff5f5 !important;
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.12) !important;
+}
+
+.rekap-badge-batal {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  font-size: 0.82rem !important;
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rekap-card-batal-info {
+  background: #fee2e2;
+  border: 1.5px solid #fca5a5;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.batal-info-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #991b1b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.batal-info-reason {
+  font-size: 0.95rem;
+  color: #7f1d1d;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.batal-reason-label {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.batal-reason-text {
+  font-weight: 600;
+  font-style: italic;
+}
+
+.batal-info-meta {
+  font-size: 0.78rem;
+  color: #b91c1c;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.rekap-card-items-list.is-cancelled {
+  color: #991b1b !important;
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
+.rekap-card-total-value.is-cancelled {
+  color: #dc2626 !important;
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
+.rekap-card-omzet-tag.is-cancelled {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #f87171;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.rekap-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-rekap-cancel-order {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1.5px solid #fca5a5;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+.btn-rekap-cancel-order:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  transform: translateY(-1px);
+}
+
+.btn-rekap-restore {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1.5px solid #86efac;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+.btn-rekap-restore:hover {
+  background: #dcfce7;
+  border-color: #22c55e;
+  transform: translateY(-1px);
+}
+
+.btn-rekap-edit-reason {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1.5px solid #bfdbfe;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+.btn-rekap-edit-reason:hover {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+}
+
+/* --------------------------------------------------------------------------
+   Modal Batalkan Transaksi Rekap (Input Alasan & Peringatan Omzet)
+   -------------------------------------------------------------------------- */
+.modal-batal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 999999 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.modal-batal-card {
+  background: #ffffff;
+  border: 2px solid #ef4444;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  box-sizing: border-box;
+  animation: modalBatalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalBatalPop {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-batal-header {
+  background: #991b1b;
+  color: #ffffff;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.modal-batal-header-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-batal-icon {
+  font-size: 1.8rem;
+}
+
+.modal-batal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.modal-batal-sub {
+  font-size: 0.82rem;
+  color: #fca5a5;
+  display: block;
+  margin-top: 2px;
+}
+
+.btn-modal-batal-close {
+  background: #7f1d1d;
+  color: #ffffff;
+  border: 1px solid #b91c1c;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-modal-batal-close:hover {
+  background: #ef4444;
+}
+
+.modal-batal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+.batal-target-summary {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.batal-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.92rem;
+}
+
+.batal-summary-label {
+  font-weight: 700;
+  color: #64748b;
+}
+
+.batal-summary-val {
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.batal-summary-val.text-red {
+  color: #dc2626;
+  font-size: 1.2rem;
+}
+
+.batal-summary-items {
+  margin-top: 0.35rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.batal-target-items-list {
+  font-size: 0.88rem;
+  color: #334155;
+  line-height: 1.4;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.batal-warning-notice {
+  background: #fff1f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #991b1b;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.batal-warning-notice .warning-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.batal-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.batal-form-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.batal-form-label .required-mark {
+  color: #dc2626;
+  font-size: 0.82rem;
+}
+
+.batal-reason-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 2px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: #0f172a;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.15s ease;
+}
+
+.batal-reason-textarea:focus {
+  outline: none;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.batal-preset-chips {
+  margin-top: 0.25rem;
+}
+
+.batal-preset-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.batal-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn-batal-chip {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-batal-chip:hover {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.btn-batal-chip:active {
+  transform: scale(0.96);
+}
+
+.modal-batal-footer {
+  padding: 1rem 1.25rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btn-batal-cancel {
+  background: #ffffff;
+  color: #475569;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-batal-cancel:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.btn-batal-confirm {
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+  transition: all 0.15s ease;
+}
+
+.btn-batal-confirm:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.btn-batal-confirm:active {
+  transform: scale(0.98);
+}
+
 .rekap-empty-state {
   text-align: center;
   padding: 3rem 1.5rem;
@@ -2311,6 +2809,18 @@ body {
 .edit-order-modal-box {
   max-width: 580px;
   width: 100%;
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.edit-order-modal-box .pos-modal-body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+  padding: 1.25rem 1.25rem 0.5rem 1.25rem !important;
 }
 
 .edit-order-modal-sub {
@@ -2323,9 +2833,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 420px;
-  overflow-y: auto;
-  margin-bottom: 1rem;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  flex: 1 1 auto !important;
+  min-height: 120px;
+  margin-bottom: 0.85rem !important;
   padding-right: 4px;
 }
 
@@ -2910,11 +3422,18 @@ body.alarm-flash-active .pos-header {
     display: none !important; /* Pada layar HP, rekap sudah ada langsung di Bottom Nav HOME */
   }
 
-  /* Bottom Nav Mobile RestoQu */
+  .pos-header-pwa-btn {
+    padding: 6px 10px !important;
+    font-size: 0.8rem !important;
+    border-radius: 8px !important;
+  }
+
+  /* Bottom Nav Mobile RestoQu (Dukungan Safe Area Layar HP) */
   #bottom-nav,
   .bottom-nav {
-    height: 64px !important;
-    padding: 0 0.5rem !important;
+    height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 0 0.5rem env(safe-area-inset-bottom, 0px) 0.5rem !important;
+    box-sizing: border-box !important;
   }
 
   .bottom-nav-btn {
@@ -2947,13 +3466,13 @@ body.alarm-flash-active .pos-header {
 
   /* Padding Aman Layar HP agar tidak tertutup Bottom Nav */
   body {
-    padding-bottom: 85px !important;
+    padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .pos-home-container,
   .pos-tagihan-container,
   .pos-container {
-    padding-bottom: 110px !important;
+    padding-bottom: calc(115px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   /* --------------------------------------------------------------------------
@@ -3219,6 +3738,47 @@ body.alarm-flash-active .pos-header {
   .btn-rekap-reprint:active {
     transform: scale(0.98);
     background: #dcfce7;
+  }
+
+  .rekap-card-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .btn-rekap-cancel-order,
+  .btn-rekap-restore,
+  .btn-rekap-edit-reason {
+    width: 100% !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  .modal-batal-card {
+    max-height: 95vh !important;
+    border-radius: 14px !important;
+  }
+
+  .modal-batal-footer {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+  }
+
+  .btn-batal-cancel,
+  .btn-batal-confirm {
+    width: 100% !important;
+    min-height: 48px !important;
+    justify-content: center !important;
+    display: flex !important;
+    align-items: center !important;
   }
 
   /* --------------------------------------------------------------------------
