@@ -179,6 +179,7 @@ function loadCartDraft(catalog) {
     items: [],
     reservationDate: '',
     serviceType: 'dine-in',
+    tipePesanan: 'qr', // 'qr' | 'reservasi' | 'takeaway'
     reservationTime: '12:00',
     needHandGlove: false,
     takeawayMethod: 'self-pickup',
@@ -198,6 +199,7 @@ function loadCartDraft(catalog) {
       items: Array.isArray(parsed.items) ? parsed.items : [],
       reservationDate: parsed.reservationDate || '',
       serviceType: parsed.serviceType || 'dine-in',
+      tipePesanan: parsed.tipePesanan || (parsed.serviceType === 'take-away' ? 'takeaway' : (parsed.serviceType === 'reservasi' ? 'reservasi' : 'qr')),
       reservationTime: parsed.reservationTime || '12:00',
       needHandGlove: Boolean(parsed.needHandGlove),
       takeawayMethod: parsed.takeawayMethod || 'self-pickup',
@@ -210,7 +212,7 @@ function loadCartDraft(catalog) {
   }
 }
 
-function saveCartDraft(items, reservationDate, serviceType, reservationTime, needHandGlove, takeawayMethod, tableNumber, isOjol, ojolRefCode) {
+function saveCartDraft(items, reservationDate, serviceType, reservationTime, needHandGlove, takeawayMethod, tableNumber, isOjol, ojolRefCode, tipePesanan) {
   try {
     const payload = {
       schemaVersion: SCHEMA_VERSION,
@@ -218,6 +220,7 @@ function saveCartDraft(items, reservationDate, serviceType, reservationTime, nee
       items: items || [],
       reservationDate: reservationDate || '',
       serviceType: serviceType || 'dine-in',
+      tipePesanan: tipePesanan || 'qr',
       reservationTime: reservationTime || '12:00',
       needHandGlove: Boolean(needHandGlove),
       takeawayMethod: takeawayMethod || 'self-pickup',
@@ -250,12 +253,13 @@ async function checkIsAddonOrder(nomorMeja) {
 
 async function sendOrderToFirestore(orderPayload) {
   let isAddon = false;
-  if (orderPayload.orderType !== 'take_away') {
+  if (orderPayload.orderType !== 'take_away' && orderPayload.tipePesanan === 'PESAN LEWAT QR MEJA') {
     isAddon = await checkIsAddonOrder(orderPayload.nomorMeja);
   }
   const payload = {
     ...orderPayload,
     isAddon: isAddon,
+    timestamp: serverTimestamp(),
     createdAt: serverTimestamp()
   };
   const docRef = await addDoc(collection(db, 'orders'), payload);
@@ -269,7 +273,12 @@ async function sendOrderToFirestore(orderPayload) {
 
 function validateCheckoutForm(formData) {
   const errors = {};
-  const isOjolActive = Boolean(formData && formData.isOjol);
+  const activeType = (formData && formData.tipePesanan) ||
+    ((formData && formData.serviceType === 'take-away') || (formData && formData.tableNumber === 'Take-Away')
+      ? 'takeaway'
+      : ((formData && formData.serviceType === 'reservasi') ? 'reservasi' : 'qr'));
+
+  const isOjolActive = Boolean(formData && formData.isOjol) && activeType === 'takeaway';
   const trimmedTable = ((formData && formData.tableNumber) || '').trim();
   const trimmedRefCode = ((formData && formData.ojolRefCode) || '').trim();
   let trimmedName = ((formData && formData.customerName) || '').trim();
@@ -278,48 +287,121 @@ function validateCheckoutForm(formData) {
   const trimmedGuest = ((formData && formData.guestCount) || '').trim();
   const rawPhone = ((formData && formData.phone) || '').trim().replace(/[\s\-()]/g, '');
   const normalizedPhone = rawPhone.startsWith('+') ? rawPhone.slice(1) : rawPhone;
-  const selectedService =
-    trimmedTable === 'Take-Away (Bungkus)' || trimmedTable === 'Take-Away' || isOjolActive
-      ? 'take-away'
-      : (formData && formData.serviceType === 'take-away' ? 'take-away' : 'dine-in');
   const trimmedTime = ((formData && formData.reservationTime) || '12:00').trim();
+  const trimmedDate = ((formData && formData.reservationDate) || '').trim();
   const isHandGloveNeeded = Boolean(formData && formData.needHandGlove);
   const selectedTakeawayMethod = formData && formData.takeawayMethod === 'gosend' ? 'gosend' : 'self-pickup';
+  const takeawayMethodText =
+    selectedTakeawayMethod === 'gosend'
+      ? 'Diambil oleh Kurir Go-Send / GrabExpress'
+      : 'Ambil Sendiri Langsung ke Restoran';
 
-  if (!trimmedTable) {
-    errors.tableNumber = 'Pilih nomor meja (Meja 1–15) atau Take-Away.';
+  // 1. Validasi Berdasarkan Tipe Pesanan
+  if (activeType === 'qr') {
+    // 🍽️ Pesan Lewat Meja (Dine-In via QR): Wajib Nomor Meja & Nama Pemesan
+    if (!trimmedTable || trimmedTable === 'Take-Away (Bungkus)' || trimmedTable === 'Take-Away') {
+      errors.tableNumber = 'Silakan pilih nomor meja Anda (Meja 1–15).';
+    }
+    if (trimmedName.length < 2 || trimmedName.length > 80) {
+      errors.customerName = 'Nama pemesan harus terdiri dari 2 hingga 80 karakter.';
+    }
+  } else if (activeType === 'reservasi') {
+    // 📅 Reservasi (Datang Nanti): Wajib Nama, WhatsApp, Tanggal, Jam, Jumlah Tamu
+    if (trimmedName.length < 2 || trimmedName.length > 80) {
+      errors.customerName = 'Nama pemesan harus terdiri dari 2 hingga 80 karakter.';
+    }
+    if (!normalizedPhone) {
+      errors.phone = 'Nomor WhatsApp wajib diisi untuk konfirmasi reservasi.';
+    } else {
+      const isPhoneDigits = /^\d{8,15}$/.test(normalizedPhone);
+      const validPrefix = normalizedPhone.startsWith('08') || normalizedPhone.startsWith('62');
+      if (!isPhoneDigits || !validPrefix) {
+        errors.phone = 'Nomor WhatsApp harus 8–15 digit dengan awalan 08 atau 62.';
+      }
+    }
+    if (!trimmedGuest) {
+      errors.guestCount = 'Konfirmasi jumlah orang yang akan datang (contoh: 5 Orang).';
+    }
+    if (!trimmedTime) {
+      errors.reservationTime = 'Tentukan jam rencana kedatangan (10.00 – 17.00 WIB).';
+    }
+    if (!trimmedDate) {
+      errors.reservationDate = 'Pilih tanggal rencana kedatangan.';
+    }
+  } else if (activeType === 'takeaway') {
+    // 🥡 Bungkus (Take-Away): Wajib Nama, Jam Pengambilan, WhatsApp (kecuali Ojol)
+    if (isOjolActive) {
+      if (!trimmedRefCode) {
+        errors.ojolRefCode = 'Masukkan Kode Referensi Pesanan (contoh: GF-1234 atau 4 digit).';
+      } else if (trimmedRefCode.length < 2 || trimmedRefCode.length > 50) {
+        errors.ojolRefCode = 'Kode referensi harus terdiri dari 2 hingga 50 karakter.';
+      }
+      if (!trimmedName) {
+        trimmedName = `Driver Ojol (${trimmedRefCode || 'GoFood'})`;
+      }
+    } else {
+      if (trimmedName.length < 2 || trimmedName.length > 80) {
+        errors.customerName = 'Nama pemesan harus terdiri dari 2 hingga 80 karakter.';
+      }
+      if (!normalizedPhone) {
+        errors.phone = 'Nomor WhatsApp wajib diisi agar dapur dapat menghubungi saat pesanan siap.';
+      } else {
+        const isPhoneDigits = /^\d{8,15}$/.test(normalizedPhone);
+        const validPrefix = normalizedPhone.startsWith('08') || normalizedPhone.startsWith('62');
+        if (!isPhoneDigits || !validPrefix) {
+          errors.phone = 'Nomor WhatsApp harus 8–15 digit dengan awalan 08 atau 62.';
+        }
+      }
+    }
+    if (!trimmedTime) {
+      errors.reservationTime = 'Tentukan jam rencana pengambilan pesanan bungkus.';
+    }
   }
 
-  if (isOjolActive) {
-    if (!trimmedRefCode) {
-      errors.ojolRefCode = 'Masukkan Kode Referensi Pesanan (contoh: GF-1234 atau 4 digit).';
-    }
-    if (!trimmedName) {
-      trimmedName = `Driver Ojol (${trimmedRefCode || 'GoFood'})`;
-    }
-  } else {
-    if (trimmedName.length < 2) {
-      errors.customerName = 'Nama pemesan minimal 2 karakter.';
-    }
+  // Tentukan label dan nomor meja final
+  let finalTable = trimmedTable;
+  let finalServiceType = 'dine-in';
+  let finalServiceLabel = 'Pesan Lewat Meja';
+  let finalTipePesanan = 'PESAN LEWAT QR MEJA';
+
+  if (activeType === 'qr') {
+    finalTable = trimmedTable || 'Meja 1';
+    finalServiceType = 'dine-in';
+    finalServiceLabel = `Pesan Lewat Meja (${finalTable})`;
+    finalTipePesanan = 'PESAN LEWAT QR MEJA';
+  } else if (activeType === 'reservasi') {
+    finalTable = 'Reservasi Saung';
+    finalServiceType = 'reservasi';
+    finalServiceLabel = 'Reservasi Saung Lesehan';
+    finalTipePesanan = 'Reservasi';
+  } else if (activeType === 'takeaway') {
+    finalTable = 'Take-Away';
+    finalServiceType = 'take-away';
+    finalServiceLabel = isOjolActive ? `Mode Ojol (${trimmedRefCode || 'Delivery'})` : 'Bungkus (Take-Away)';
+    finalTipePesanan = 'Take-Away';
   }
 
   return {
     valid: Object.keys(errors).length === 0,
     errors,
     sanitized: {
-      tableNumber: trimmedTable || (isOjolActive ? 'Take-Away' : 'Meja 1'),
+      tipePesanan: finalTipePesanan,
+      tableNumber: finalTable,
       isOjol: isOjolActive,
       ojolRefCode: trimmedRefCode,
-      customerName: trimmedName || (isOjolActive ? 'Driver Ojol' : 'Pelanggan Meja'),
-      groupName: trimmedGroup || '-',
-      phone: normalizedPhone || '-',
-      serviceType: selectedService,
-      serviceLabel: selectedService === 'dine-in' ? `Makan di Tempat (${trimmedTable})` : 'Take-Away (Bungkus)',
+      customerName: trimmedName || (isOjolActive ? 'Driver Ojol' : (activeType === 'qr' ? 'Pelanggan Meja' : 'Pelanggan')),
+      groupName: (activeType === 'takeaway') ? '-' : (trimmedGroup || '-'),
+      phone: (activeType === 'qr') ? '-' : (normalizedPhone || '-'),
+      serviceType: finalServiceType,
+      serviceLabel: finalServiceLabel,
       reservationTime: trimmedTime || '12:00',
-      guestCount: trimmedGuest || '-',
-      notes: trimmedNotes || '-',
+      reservationDate: trimmedDate,
+      guestCount: (activeType === 'reservasi') ? (trimmedGuest || '-') : '-',
+      notes: (activeType === 'qr') ? '-' : (trimmedNotes || '-'),
       needHandGlove: isHandGloveNeeded,
-      takeawayMethod: selectedTakeawayMethod
+      handGloveText: isHandGloveNeeded ? 'Ya, perlu sarung tangan plastik' : 'Tidak perlu',
+      takeawayMethod: selectedTakeawayMethod,
+      takeawayMethodText: takeawayMethodText
     }
   };
 }
@@ -332,7 +414,8 @@ function initApp() {
       selectedCategory: 'Semua',
       items: [],
       reservationDate: '',
-      serviceType: 'dine-in', // 'dine-in' | 'take-away'
+      serviceType: 'dine-in', // 'dine-in' | 'take-away' | 'reservasi'
+      tipePesanan: 'qr', // 'qr' | 'reservasi' | 'takeaway'
       reservationTime: '12:00',
       needHandGlove: false,
       takeawayMethod: 'self-pickup', // 'self-pickup' | 'gosend'
@@ -355,14 +438,36 @@ function initApp() {
       cartJumpCount: document.getElementById('cart-jump-count'),
       cartItemsContainer: document.getElementById('cart-items'),
       emptyCartMessage: document.getElementById('empty-cart-message'),
+      orderTypeContainer: document.getElementById('order-type-container'),
+      orderTypeQr: document.getElementById('order-type-qr'),
+      orderTypeReservasi: document.getElementById('order-type-reservasi'),
+      orderTypeTakeaway: document.getElementById('order-type-takeaway'),
+      cardTypeQr: document.getElementById('card-type-qr'),
+      cardTypeReservasi: document.getElementById('card-type-reservasi'),
+      cardTypeTakeaway: document.getElementById('card-type-takeaway'),
+      tableNumberGroup: document.getElementById('table-number-group'),
+      reservationDateGroup: document.getElementById('reservation-date-group'),
       reservationDateInput: document.getElementById('reservation-date'),
+      timeGuestRow: document.getElementById('time-guest-row'),
+      timeGroup: document.getElementById('time-group'),
+      timeLabel: document.getElementById('time-label'),
       reservationTimeInput: document.getElementById('reservation-time'),
       timeError: document.getElementById('time-error'),
       serviceTypeDineIn: document.getElementById('service-dine-in'),
       serviceTypeTakeAway: document.getElementById('service-take-away'),
-      guestCountInput: document.getElementById('guest-count'),
       guestCountGroup: document.getElementById('guest-count-group'),
+      guestCountInput: document.getElementById('guest-count'),
       guestError: document.getElementById('guest-error'),
+      customerNameGroup: document.getElementById('customer-name-group'),
+      customerNameInput: document.getElementById('customer-name'),
+      nameError: document.getElementById('name-error'),
+      groupNameGroup: document.getElementById('group-name-group'),
+      groupNameInput: document.getElementById('group-name'),
+      customerPhoneGroup: document.getElementById('customer-phone-group'),
+      phoneInput: document.getElementById('customer-phone'),
+      phoneError: document.getElementById('phone-error'),
+      customerNotesGroup: document.getElementById('customer-notes-group'),
+      notesInput: document.getElementById('customer-notes'),
       takeawayMethodGroup: document.getElementById('takeaway-method-group'),
       takeawaySelf: document.getElementById('takeaway-self'),
       takeawayGosend: document.getElementById('takeaway-gosend'),
@@ -376,16 +481,11 @@ function initApp() {
       checkoutForm: document.getElementById('checkout-form'),
       tableNumberSelect: document.getElementById('table-number'),
       tableError: document.getElementById('table-error'),
+      ojolContainer: document.getElementById('ojol-container'),
       ojolModeToggle: document.getElementById('ojol-mode-toggle'),
       ojolRefGroup: document.getElementById('ojol-ref-group'),
       ojolRefCodeInput: document.getElementById('ojol-ref-code'),
       ojolRefError: document.getElementById('ojol-ref-error'),
-      customerNameInput: document.getElementById('customer-name'),
-      nameError: document.getElementById('name-error'),
-      groupNameInput: document.getElementById('group-name'),
-      phoneInput: document.getElementById('customer-phone'),
-      phoneError: document.getElementById('phone-error'),
-      notesInput: document.getElementById('customer-notes'),
       submitOrderBtn: document.getElementById('submit-order-btn'),
       submitBtnText: document.getElementById('submit-btn-text'),
       reviewPanel: document.getElementById('review-panel'),
@@ -452,7 +552,8 @@ function initApp() {
           state.takeawayMethod,
           state.tableNumber,
           state.isOjol,
-          state.ojolRefCode
+          state.ojolRefCode,
+          state.tipePesanan
         );
         if (!ok && !state.storageWarning) {
           state.storageWarning = true;
@@ -1358,13 +1459,13 @@ function initApp() {
       }
 
       if (elements.estimatedTotal) {
-        if (!state.reservationDate) {
+        if (state.tipePesanan === 'reservasi' && !state.reservationDate) {
           elements.estimatedTotal.textContent =
-            'Pilih tanggal kedatangan untuk menghitung total estimasi';
-        } else if (!summary.dateValid) {
+            'Pilih tanggal rencana kedatangan untuk menghitung total estimasi';
+        } else if (state.tipePesanan === 'reservasi' && !summary.dateValid) {
           elements.estimatedTotal.textContent = summary.dateMessage;
         } else {
-          elements.estimatedTotal.textContent = formatRupiah(summary.totalPrice);
+          elements.estimatedTotal.textContent = formatRupiah(summary.rawTotalPrice || summary.totalPrice);
         }
       }
     }
@@ -1383,26 +1484,128 @@ function initApp() {
     }
 
     function updateServiceTypeUI() {
-      const isDineIn = state.serviceType === 'dine-in';
-      if (elements.guestCountGroup) {
-        elements.guestCountGroup.style.display = isDineIn ? 'block' : 'none';
+      const type = state.tipePesanan || 'qr';
+
+      // Sinkronkan radio cards visual
+      ['qr', 'reservasi', 'takeaway'].forEach((t) => {
+        const card = document.getElementById(`card-type-${t}`);
+        const radio = document.getElementById(`order-type-${t}`);
+        if (card) {
+          if (t === type) {
+            card.classList.add('active');
+          } else {
+            card.classList.remove('active');
+          }
+        }
+        if (radio) {
+          radio.checked = (t === type);
+        }
+      });
+
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+      if (type === 'qr') {
+        // (1) "Pesan Lewat Meja": TAMPILKAN HANYA input "Nama Lengkap", "Nama Rombongan", dan "Nomor/Area Meja". Sembunyikan sisanya.
+        if (elements.tableNumberGroup) elements.tableNumberGroup.style.display = 'block';
+        if (elements.customerNameGroup) elements.customerNameGroup.style.display = 'block';
+        if (elements.groupNameGroup) elements.groupNameGroup.style.display = 'block';
+
+        // Sembunyikan sisanya:
+        if (elements.reservationDateGroup) elements.reservationDateGroup.style.display = 'none';
+        if (elements.timeGroup) elements.timeGroup.style.display = 'none';
+        if (elements.guestCountGroup) elements.guestCountGroup.style.display = 'none';
+        if (elements.customerPhoneGroup) elements.customerPhoneGroup.style.display = 'none';
+        if (elements.customerNotesGroup) elements.customerNotesGroup.style.display = 'none';
+        if (elements.takeawayMethodGroup) elements.takeawayMethodGroup.style.display = 'none';
+        if (elements.gosendNotice) elements.gosendNotice.style.display = 'none';
+        if (elements.handgloveGroup) elements.handgloveGroup.style.display = 'none';
+        if (elements.ojolContainer) elements.ojolContainer.style.display = 'none';
+        if (elements.ojolRefGroup) elements.ojolRefGroup.style.display = 'none';
+
+        state.serviceType = 'dine-in';
+        state.reservationDate = todayStr;
+        if (elements.reservationDateInput) elements.reservationDateInput.value = todayStr;
+
+        if (elements.tableNumberSelect && elements.tableNumberSelect.value === 'Take-Away (Bungkus)') {
+          elements.tableNumberSelect.value = 'Meja 1';
+          state.tableNumber = 'Meja 1';
+        }
+
+      } else if (type === 'reservasi') {
+        // (2) "Reservasi": TAMPILKAN input Nama Lengkap, Rombongan, Nomor WhatsApp, Jumlah Orang, Catatan, DAN <input type="date"> & <input type="time">. Sembunyikan Nomor Meja.
+        if (elements.customerNameGroup) elements.customerNameGroup.style.display = 'block';
+        if (elements.groupNameGroup) elements.groupNameGroup.style.display = 'block';
+        if (elements.customerPhoneGroup) elements.customerPhoneGroup.style.display = 'block';
+        if (elements.guestCountGroup) elements.guestCountGroup.style.display = 'block';
+        if (elements.customerNotesGroup) elements.customerNotesGroup.style.display = 'block';
+        if (elements.reservationDateGroup) elements.reservationDateGroup.style.display = 'block';
+        if (elements.timeGroup) elements.timeGroup.style.display = 'block';
+        if (elements.timeLabel) {
+          elements.timeLabel.innerHTML = 'Jam Rencana Kedatangan <span class="required">*</span>';
+        }
+
+        // Sembunyikan Nomor Meja, Ojol, Bungkus Method, Sarung Tangan:
+        if (elements.tableNumberGroup) elements.tableNumberGroup.style.display = 'none';
+        if (elements.takeawayMethodGroup) elements.takeawayMethodGroup.style.display = 'none';
+        if (elements.gosendNotice) elements.gosendNotice.style.display = 'none';
+        if (elements.handgloveGroup) elements.handgloveGroup.style.display = 'none';
+        if (elements.ojolContainer) elements.ojolContainer.style.display = 'none';
+        if (elements.ojolRefGroup) elements.ojolRefGroup.style.display = 'none';
+
+        state.serviceType = 'reservasi';
+        state.tableNumber = 'Reservasi Saung';
+
+      } else if (type === 'takeaway') {
+        // (3) "Bungkus (Take-Away)": TAMPILKAN input Nama Lengkap, Nomor WhatsApp, Catatan, dan Jam Pengambilan (<input type="time">). Sembunyikan Nomor Meja dan Jumlah Orang.
+        if (elements.customerNameGroup) elements.customerNameGroup.style.display = 'block';
+        if (elements.customerPhoneGroup) elements.customerPhoneGroup.style.display = 'block';
+        if (elements.customerNotesGroup) elements.customerNotesGroup.style.display = 'block';
+        if (elements.timeGroup) elements.timeGroup.style.display = 'block';
+        if (elements.timeLabel) {
+          elements.timeLabel.innerHTML = 'Jam Rencana Pengambilan <span class="required">*</span>';
+        }
+        if (elements.takeawayMethodGroup) elements.takeawayMethodGroup.style.display = 'block';
+        if (elements.gosendNotice) {
+          elements.gosendNotice.style.display = state.takeawayMethod === 'gosend' ? 'block' : 'none';
+        }
+        if (elements.handgloveGroup) elements.handgloveGroup.style.display = 'block';
+        if (elements.ojolContainer) elements.ojolContainer.style.display = 'block';
+        if (elements.ojolRefGroup) {
+          elements.ojolRefGroup.style.display = state.isOjol ? 'block' : 'none';
+        }
+
+        // Sembunyikan Nomor Meja, Jumlah Tamu, Nama Rombongan, Tanggal (set hari ini):
+        if (elements.tableNumberGroup) elements.tableNumberGroup.style.display = 'none';
+        if (elements.guestCountGroup) elements.guestCountGroup.style.display = 'none';
+        if (elements.groupNameGroup) elements.groupNameGroup.style.display = 'none';
+        if (elements.reservationDateGroup) elements.reservationDateGroup.style.display = 'none';
+
+        state.serviceType = 'take-away';
+        state.tableNumber = 'Take-Away';
+        state.reservationDate = todayStr;
+        if (elements.reservationDateInput) elements.reservationDateInput.value = todayStr;
       }
-      if (elements.takeawayMethodGroup) {
-        elements.takeawayMethodGroup.style.display = isDineIn ? 'none' : 'block';
-      }
-      if (elements.gosendNotice) {
-        elements.gosendNotice.style.display =
-          !isDineIn && state.takeawayMethod === 'gosend' ? 'block' : 'none';
-      }
-      if (elements.handgloveGroup) {
-        elements.handgloveGroup.style.display = isDineIn ? 'none' : 'block';
-      }
-      const timeLabel = document.getElementById('time-label');
-      if (timeLabel) {
-        timeLabel.textContent = isDineIn
-          ? 'Jam Rencana Kedatangan'
-          : 'Jam Rencana Pengambilan (Bungkus)';
-      }
+    }
+
+    function setOrderType(newType) {
+      if (!['qr', 'reservasi', 'takeaway'].includes(newType)) return;
+      state.tipePesanan = newType;
+      updateServiceTypeUI();
+
+      // Reset pesan error saat berganti tipe
+      if (elements.tableError) elements.tableError.hidden = true;
+      if (elements.nameError) elements.nameError.hidden = true;
+      if (elements.phoneError) elements.phoneError.hidden = true;
+      if (elements.dateError) elements.dateError.hidden = true;
+      if (elements.timeError) elements.timeError.hidden = true;
+      if (elements.guestError) elements.guestError.hidden = true;
+      if (elements.ojolRefError) elements.ojolRefError.hidden = true;
+
+      invalidateReview();
+      persistState();
+      renderCart();
     }
 
     async function processAndSendOrder(summary, sanitizedContact) {
@@ -1424,11 +1627,33 @@ function initApp() {
       }
 
       try {
-        const tableClean = String(sanitizedContact.tableNumber || (sanitizedContact.isOjol ? 'Take-Away' : 'Meja 1')).trim();
-        const isTakeAway = tableClean.toLowerCase().includes('take-away') || Boolean(sanitizedContact.isOjol);
-        const orderType = isTakeAway ? 'take_away' : 'dine_in';
-        const isOjol = Boolean(sanitizedContact.isOjol);
+        const type = state.tipePesanan || 'qr';
+        let tipePesanan = 'PESAN LEWAT QR MEJA';
+        let tableClean = 'Meja 1';
+        let orderType = 'dine_in';
+
+        if (type === 'reservasi') {
+          tipePesanan = 'Reservasi';
+          tableClean = 'Reservasi Saung';
+          orderType = 'dine_in';
+        } else if (type === 'takeaway') {
+          tipePesanan = 'Take-Away';
+          tableClean = 'Take-Away';
+          orderType = 'take_away';
+        } else {
+          tipePesanan = 'PESAN LEWAT QR MEJA';
+          tableClean = String(elements.tableNumberSelect ? elements.tableNumberSelect.value : state.tableNumber).trim() || 'Meja 1';
+          orderType = 'dine_in';
+        }
+
+        const isTakeAway = (type === 'takeaway');
+        const isOjol = Boolean(sanitizedContact.isOjol) && isTakeAway;
         const kodeOjol = isOjol ? String(sanitizedContact.ojolRefCode || '') : '';
+
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
         const formattedItems = summary.items.map((i) => ({
           id: String(i.productId || 'menu-item'),
@@ -1441,20 +1666,36 @@ function initApp() {
 
         const orderPayload = {
           nomorMeja: tableClean,
+          tipePesanan: tipePesanan,
           orderType: orderType,
+          serviceType: type === 'takeaway' ? 'take-away' : (type === 'reservasi' ? 'reservasi' : 'dine-in'),
           isOjol: isOjol,
           kodeOjol: kodeOjol,
+          isQrOrder: type === 'qr',
           items: formattedItems,
-          totalHarga: Number(summary.totalPrice),
+          totalHarga: Number(summary.rawTotalPrice || summary.totalPrice),
+          status: 'baru',
           kitchenStatus: 'baru',
           paymentStatus: 'belum_lunas',
           paymentMethod: '',
-          customerName: sanitizedContact.customerName || '',
-          phone: sanitizedContact.phone || '',
-          notes: sanitizedContact.notes || '',
-          serviceType: sanitizedContact.serviceType,
-          reservationDate: state.reservationDate,
-          reservationTime: sanitizedContact.reservationTime || ''
+
+          // Seluruh Data Form Pelanggan Berdasarkan Tipe
+          namaPemesan: sanitizedContact.customerName || (isOjol ? 'Driver Ojol' : (type === 'qr' ? 'Pelanggan Meja' : 'Pelanggan')),
+          customerName: sanitizedContact.customerName || (isOjol ? 'Driver Ojol' : (type === 'qr' ? 'Pelanggan Meja' : 'Pelanggan')),
+          namaRombongan: (type === 'takeaway') ? '-' : (sanitizedContact.groupName || '-'),
+          groupName: (type === 'takeaway') ? '-' : (sanitizedContact.groupName || '-'),
+          nomorWhatsapp: (type === 'qr') ? '-' : (sanitizedContact.phone || '-'),
+          phone: (type === 'qr') ? '-' : (sanitizedContact.phone || '-'),
+          catatanKhusus: (type === 'qr') ? '-' : (sanitizedContact.notes || '-'),
+          notes: (type === 'qr') ? '-' : (sanitizedContact.notes || '-'),
+          jamKedatangan: (type === 'qr') ? currentTime : (sanitizedContact.reservationTime || '12:00'),
+          reservationTime: (type === 'qr') ? currentTime : (sanitizedContact.reservationTime || '12:00'),
+          jumlahOrang: (type === 'reservasi') ? (sanitizedContact.guestCount || '-') : '-',
+          guestCount: (type === 'reservasi') ? (sanitizedContact.guestCount || '-') : '-',
+          tanggalKedatangan: (type === 'reservasi') ? (state.reservationDate || todayStr) : todayStr,
+          reservationDate: (type === 'reservasi') ? (state.reservationDate || todayStr) : todayStr,
+          takeawayMethod: type === 'takeaway' ? (sanitizedContact.takeawayMethod || 'self-pickup') : '',
+          needHandGlove: type === 'takeaway' ? Boolean(sanitizedContact.needHandGlove) : false
         };
 
         const result = await sendOrderToFirestore(orderPayload);
@@ -1530,28 +1771,36 @@ function initApp() {
       const list = document.createElement('dl');
       list.className = 'review-list';
 
+      const type = state.tipePesanan || 'qr';
+
       const entries = [
-        ['Nomor Meja / Layanan', sanitizedContact.tableNumber],
+        type === 'qr'
+          ? ['Nomor Meja', sanitizedContact.tableNumber]
+          : null,
         sanitizedContact.isOjol
           ? ['Mode Ojol', `Aktif (Markup +20%) - Ref: ${sanitizedContact.ojolRefCode}`]
           : null,
-        ['Tipe Layanan', sanitizedContact.serviceLabel],
+        ['Tipe Pesanan', sanitizedContact.tipePesanan || sanitizedContact.serviceLabel],
         ['Nama Pemesan', sanitizedContact.customerName],
-        sanitizedContact.groupName && sanitizedContact.groupName !== '-'
+        type !== 'takeaway' && sanitizedContact.groupName && sanitizedContact.groupName !== '-'
           ? ['Instansi / Rombongan', sanitizedContact.groupName]
           : null,
-        sanitizedContact.phone && sanitizedContact.phone !== '-'
+        type !== 'qr' && sanitizedContact.phone && sanitizedContact.phone !== '-'
           ? ['Nomor WhatsApp / HP', sanitizedContact.phone]
           : null,
-        ['Tanggal Pesanan', state.reservationDate],
-        ['Jam Kedatangan / Ambil', `${sanitizedContact.reservationTime} WIB`],
-        sanitizedContact.serviceType === 'dine-in' && sanitizedContact.guestCount !== '-'
-          ? ['Konfirmasi Jumlah Orang', `${sanitizedContact.guestCount} Orang`]
+        type === 'reservasi'
+          ? ['Tanggal Rencana Kedatangan', state.reservationDate]
+          : ['Tanggal Pesanan', state.reservationDate],
+        type === 'reservasi'
+          ? ['Jam Rencana Kedatangan', `${sanitizedContact.reservationTime} WIB`]
+          : (type === 'takeaway' ? ['Jam Rencana Pengambilan', `${sanitizedContact.reservationTime} WIB`] : null),
+        type === 'reservasi' && sanitizedContact.guestCount && sanitizedContact.guestCount !== '-'
+          ? ['Konfirmasi Jumlah Tamu', `${sanitizedContact.guestCount}`]
           : null,
-        sanitizedContact.serviceType === 'take-away'
+        type === 'takeaway'
           ? ['Metode Pengambilan', sanitizedContact.takeawayMethodText]
           : null,
-        sanitizedContact.serviceType === 'take-away'
+        type === 'takeaway'
           ? ['Sarung Tangan Plastik', sanitizedContact.handGloveText]
           : null,
         [
@@ -1560,8 +1809,8 @@ function initApp() {
             .map((i) => `${i.name}${i.option ? ` [${i.option}]` : ''} (${i.quantity}x @ ${formatRupiah(i.unitPrice)})`)
             .join(', ')
         ],
-        ['Total Estimasi Biaya', formatRupiah(summary.totalPrice)],
-        sanitizedContact.notes && sanitizedContact.notes !== '-'
+        ['Total Estimasi Biaya', formatRupiah(summary.rawTotalPrice || summary.totalPrice)],
+        type !== 'qr' && sanitizedContact.notes && sanitizedContact.notes !== '-'
           ? ['Catatan Khusus', sanitizedContact.notes]
           : null
       ].filter(Boolean);
@@ -1669,41 +1918,62 @@ function initApp() {
         elements.successModalBackdrop.addEventListener('click', closeSuccessModal);
       }
 
-      if (elements.serviceTypeDineIn) {
-        elements.serviceTypeDineIn.addEventListener('change', () => {
-          if (elements.serviceTypeDineIn.checked) {
-            state.serviceType = 'dine-in';
-            if (elements.tableNumberSelect && elements.tableNumberSelect.value === 'Take-Away (Bungkus)') {
-              elements.tableNumberSelect.value = 'Meja 1';
-              state.tableNumber = 'Meja 1';
-            }
-            if (elements.ojolModeToggle && elements.ojolModeToggle.checked) {
-              elements.ojolModeToggle.checked = false;
-              state.isOjol = false;
-              if (elements.ojolRefGroup) elements.ojolRefGroup.style.display = 'none';
-              renderCatalog();
-              renderCart();
-            }
-            updateServiceTypeUI();
-            invalidateReview();
-            persistState();
+      // Event Listeners 3 Opsi Tipe Pemesanan
+      if (elements.orderTypeQr) {
+        elements.orderTypeQr.addEventListener('change', () => setOrderType('qr'));
+      }
+      if (elements.cardTypeQr) {
+        elements.cardTypeQr.addEventListener('click', () => setOrderType('qr'));
+      }
+
+      if (elements.orderTypeReservasi) {
+        elements.orderTypeReservasi.addEventListener('change', () => setOrderType('reservasi'));
+      }
+      if (elements.cardTypeReservasi) {
+        elements.cardTypeReservasi.addEventListener('click', () => setOrderType('reservasi'));
+      }
+
+      if (elements.orderTypeTakeaway) {
+        elements.orderTypeTakeaway.addEventListener('change', () => setOrderType('takeaway'));
+      }
+      if (elements.cardTypeTakeaway) {
+        elements.cardTypeTakeaway.addEventListener('click', () => setOrderType('takeaway'));
+      }
+
+      if (elements.tableNumberSelect) {
+        elements.tableNumberSelect.addEventListener('change', () => {
+          state.tableNumber = elements.tableNumberSelect.value;
+          setFieldError(elements.tableNumberSelect, elements.tableError, '');
+
+          if (state.tableNumber === 'Take-Away (Bungkus)') {
+            setOrderType('takeaway');
+          } else {
+            setOrderType('qr');
           }
         });
       }
 
-      if (elements.serviceTypeTakeAway) {
-        elements.serviceTypeTakeAway.addEventListener('change', () => {
-          if (elements.serviceTypeTakeAway.checked) {
-            state.serviceType = 'take-away';
-            if (elements.tableNumberSelect) {
-              elements.tableNumberSelect.value = 'Take-Away (Bungkus)';
-              state.tableNumber = 'Take-Away (Bungkus)';
-              setFieldError(elements.tableNumberSelect, elements.tableError, '');
-            }
-            updateServiceTypeUI();
-            invalidateReview();
-            persistState();
+      if (elements.ojolModeToggle) {
+        elements.ojolModeToggle.addEventListener('change', () => {
+          state.isOjol = elements.ojolModeToggle.checked;
+
+          if (state.isOjol) {
+            setOrderType('takeaway');
+            if (elements.ojolRefGroup) elements.ojolRefGroup.style.display = 'block';
+            announceStatus('Mode Ojol aktif. Markup komisi +20% diterapkan ke semua harga.');
+          } else {
+            if (elements.ojolRefGroup) elements.ojolRefGroup.style.display = 'none';
+            if (elements.ojolRefCodeInput) elements.ojolRefCodeInput.value = '';
+            state.ojolRefCode = '';
+            setFieldError(elements.ojolRefCodeInput, elements.ojolRefError, '');
+            announceStatus('Mode Ojol dinonaktifkan. Harga normal Saung H. Amir kembali diterapkan.');
           }
+
+          updateServiceTypeUI();
+          renderCatalog();
+          renderCart();
+          invalidateReview();
+          persistState();
         });
       }
 
@@ -1864,26 +2134,48 @@ function initApp() {
             return;
           }
 
-          const dateCheck = validateReservationDate(state.reservationDate);
-          setFieldError(
-            elements.reservationDateInput,
-            elements.dateError,
-            dateCheck.valid ? '' : dateCheck.message
-          );
+          // Validasi Tanggal hanya untuk Reservasi
+          if (state.tipePesanan === 'reservasi') {
+            const dateCheck = validateReservationDate(state.reservationDate);
+            setFieldError(
+              elements.reservationDateInput,
+              elements.dateError,
+              dateCheck.valid ? '' : dateCheck.message
+            );
+            if (!dateCheck.valid) {
+              announceStatus(dateCheck.message || 'Wajib memilih tanggal kedatangan!');
+              if (elements.reservationDateInput) {
+                elements.reservationDateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                elements.reservationDateInput.focus();
+              }
+              alert(dateCheck.message || 'Wajib memilih Tanggal Rencana Kedatangan sebelum meninjau pesanan!');
+              return;
+            }
+          } else {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            state.reservationDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+            if (elements.reservationDateInput) elements.reservationDateInput.value = state.reservationDate;
+            if (elements.dateError) {
+              elements.dateError.textContent = '';
+              elements.dateError.hidden = true;
+            }
+          }
 
           const isHandGloveActive =
-            state.serviceType === 'take-away' &&
+            state.tipePesanan === 'takeaway' &&
             elements.handgloveYes &&
             elements.handgloveYes.checked;
 
           const activeTakeawayMethod =
-            state.serviceType === 'take-away' &&
+            state.tipePesanan === 'takeaway' &&
             elements.takeawayGosend &&
             elements.takeawayGosend.checked
               ? 'gosend'
               : 'self-pickup';
 
           const formValidation = validateCheckoutForm({
+            tipePesanan: state.tipePesanan,
             tableNumber: elements.tableNumberSelect ? elements.tableNumberSelect.value : state.tableNumber,
             isOjol: state.isOjol,
             ojolRefCode: elements.ojolRefCodeInput ? elements.ojolRefCodeInput.value : state.ojolRefCode,
@@ -1891,6 +2183,7 @@ function initApp() {
             groupName: elements.groupNameInput ? elements.groupNameInput.value : '',
             phone: elements.phoneInput ? elements.phoneInput.value : '',
             serviceType: state.serviceType,
+            reservationDate: state.reservationDate,
             reservationTime: elements.reservationTimeInput
               ? elements.reservationTimeInput.value
               : '12:00',
@@ -1930,15 +2223,12 @@ function initApp() {
             elements.guestError,
             formValidation.errors.guestCount || ''
           );
-
-          if (!dateCheck.valid) {
-            announceStatus(dateCheck.message || 'Wajib memilih tanggal kedatangan/pengambilan!');
-            if (elements.reservationDateInput) {
-              elements.reservationDateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              elements.reservationDateInput.focus();
-            }
-            alert(dateCheck.message || 'Wajib memilih Tanggal Kedatangan / Pengambilan sebelum meninjau pesanan!');
-            return;
+          if (elements.reservationDateInput && elements.dateError) {
+            setFieldError(
+              elements.reservationDateInput,
+              elements.dateError,
+              formValidation.errors.reservationDate || ''
+            );
           }
 
           if (!formValidation.valid) {
@@ -1951,6 +2241,8 @@ function initApp() {
               elements.customerNameInput.focus();
             } else if (formValidation.errors.phone && elements.phoneInput) {
               elements.phoneInput.focus();
+            } else if (formValidation.errors.reservationDate && elements.reservationDateInput) {
+              elements.reservationDateInput.focus();
             } else if (formValidation.errors.reservationTime && elements.reservationTimeInput) {
               elements.reservationTimeInput.focus();
             } else if (formValidation.errors.guestCount && elements.guestCountInput) {
@@ -2010,6 +2302,7 @@ function initApp() {
       state.items = draft.items || [];
       state.reservationDate = draft.reservationDate || '';
       state.serviceType = draft.serviceType || 'dine-in';
+      state.tipePesanan = draft.tipePesanan || 'qr';
       state.reservationTime = draft.reservationTime || '12:00';
       state.needHandGlove = Boolean(draft.needHandGlove);
       state.takeawayMethod = draft.takeawayMethod === 'gosend' ? 'gosend' : 'self-pickup';
@@ -2019,6 +2312,30 @@ function initApp() {
 
       if (elements.tableNumberSelect && state.tableNumber) {
         elements.tableNumberSelect.value = state.tableNumber;
+      }
+
+      // Deteksi URL Query Param akrilik QR Meja (misal: ?meja=4 atau ?table=4) atau ?tipe=reservasi
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlTable = urlParams.get('meja') || urlParams.get('table') || urlParams.get('qr');
+        const urlTipe = (urlParams.get('tipe') || '').toLowerCase();
+        if (urlTable) {
+          let cleanTable = urlTable.trim();
+          if (!cleanTable.toLowerCase().startsWith('meja') && !isNaN(parseInt(cleanTable, 10))) {
+            cleanTable = `Meja ${cleanTable}`;
+          }
+          state.tableNumber = cleanTable;
+          state.tipePesanan = 'qr';
+          if (elements.tableNumberSelect) {
+            elements.tableNumberSelect.value = cleanTable;
+          }
+        } else if (urlTipe === 'reservasi') {
+          state.tipePesanan = 'reservasi';
+        } else if (urlTipe === 'takeaway' || urlTipe === 'bungkus') {
+          state.tipePesanan = 'takeaway';
+        }
+      } catch (e) {
+        console.warn('Gagal membaca parameter QR meja dari URL:', e);
       }
 
       if (elements.ojolModeToggle) {
@@ -2047,12 +2364,6 @@ function initApp() {
 
       if (elements.reservationTimeInput && state.reservationTime) {
         elements.reservationTimeInput.value = state.reservationTime;
-      }
-
-      if (state.serviceType === 'take-away' && elements.serviceTypeTakeAway) {
-        elements.serviceTypeTakeAway.checked = true;
-      } else if (elements.serviceTypeDineIn) {
-        elements.serviceTypeDineIn.checked = true;
       }
 
       if (state.takeawayMethod === 'gosend' && elements.takeawayGosend) {

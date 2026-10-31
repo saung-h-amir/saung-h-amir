@@ -339,21 +339,10 @@
               <a href="#katalog" class="btn btn-outline btn-sm">Ke Katalog Menu ↑</a>
             </div>
 
-            <!-- Tanggal Kedatangan / Ambil (Dibuat Sangat Mencolok / Obvious Sesuai Instruksi) -->
-            <div class="form-group highlight-date-group">
-              <label for="reservation-date" class="highlight-date-label">
-                <span>📅 Tanggal Kedatangan / Pengambilan <span class="required" style="color: #dc2626; font-size: 1.1rem; font-weight: 900;">*</span></span>
-                <span class="badge-wajib-diisi">WAJIB DIISI</span>
-              </label>
-              <input type="date" id="reservation-date" class="form-input highlight-date-input" required>
-              <p id="date-error" class="form-error" role="alert" hidden></p>
-              <small class="form-hint highlight-date-hint">⚠️ Wajib memilih tanggal agar sistem dapur dapat menyiapkan pesanan Anda dan menghitung estimasi biaya.</small>
-            </div>
-
             <!-- Kotak Total Estimasi Biaya -->
             <div class="cart-summary-box">
               <span class="summary-label">Total Estimasi Biaya:</span>
-              <strong id="estimated-total" class="summary-value">Pilih tanggal kedatangan untuk menghitung total estimasi</strong>
+              <strong id="estimated-total" class="summary-value">Rp 0</strong>
             </div>
           </div>
 
@@ -364,13 +353,40 @@
             </div>
 
             <form id="checkout-form" novalidate>
-              <!-- Pilihan Dropdown Nomor Meja atau Take-Away -->
+              <!-- Pilihan Tipe Pemesanan (3 Opsi: Pesan Lewat Meja / Reservasi / Bungkus) -->
+              <div class="form-group order-type-group" id="order-type-container">
+                <label class="order-type-title">Pilihan Tipe Pemesanan <span class="required">*</span></label>
+                <div class="order-type-selector" role="radiogroup" aria-label="Tipe Pemesanan">
+                  <label class="order-type-card active" id="card-type-qr" for="order-type-qr">
+                    <input type="radio" name="orderTypeRadio" id="order-type-qr" value="qr" checked>
+                    <span class="order-type-icon">🍽️</span>
+                    <span class="order-type-label">Pesan Lewat Meja</span>
+                    <small class="order-type-desc">Dine-In via QR</small>
+                  </label>
+
+                  <label class="order-type-card" id="card-type-reservasi" for="order-type-reservasi">
+                    <input type="radio" name="orderTypeRadio" id="order-type-reservasi" value="reservasi">
+                    <span class="order-type-icon">📅</span>
+                    <span class="order-type-label">Reservasi</span>
+                    <small class="order-type-desc">Datang Nanti</small>
+                  </label>
+
+                  <label class="order-type-card" id="card-type-takeaway" for="order-type-takeaway">
+                    <input type="radio" name="orderTypeRadio" id="order-type-takeaway" value="takeaway">
+                    <span class="order-type-icon">🥡</span>
+                    <span class="order-type-label">Bungkus</span>
+                    <small class="order-type-desc">Take-Away</small>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Pilihan Dropdown Nomor Meja (Khusus Pesan Lewat Meja) -->
               <div class="form-group" id="table-number-group">
                 <label for="table-number">
-                  Nomor Meja / Layanan <span class="required">*</span>
+                  Nomor Meja / Area <span class="required">*</span>
                 </label>
                 <select id="table-number" name="tableNumber" class="form-select form-input" required>
-                  <option value="" disabled selected>-- Pilih Nomor Meja / Take-Away --</option>
+                  <option value="" disabled selected>-- Pilih Nomor Meja --</option>
                   <option value="Meja 1">Meja 1</option>
                   <option value="Meja 2">Meja 2</option>
                   <option value="Meja 3">Meja 3</option>
@@ -391,8 +407,75 @@
                 <p id="table-error" class="form-error" role="alert" hidden></p>
               </div>
 
-              <!-- Sakelar Switch Mode Ojol (GoFood/GrabFood) -->
-              <div class="form-group ojol-toggle-container">
+              <!-- Tanggal Kedatangan (Khusus Reservasi) -->
+              <div class="form-group highlight-date-group" id="reservation-date-group" style="display: none;">
+                <label for="reservation-date" class="highlight-date-label">
+                  <span>📅 Tanggal Rencana Kedatangan <span class="required" style="color: #dc2626; font-size: 1.1rem; font-weight: 900;">*</span></span>
+                  <span class="badge-wajib-diisi">WAJIB DIISI</span>
+                </label>
+                <input type="date" id="reservation-date" name="reservationDate" class="form-input highlight-date-input">
+                <p id="date-error" class="form-error" role="alert" hidden></p>
+                <small class="form-hint highlight-date-hint">⚠️ Wajib memilih tanggal agar sistem dapur dapat menyiapkan saung dan pesanan Anda.</small>
+              </div>
+
+              <!-- Baris Jam & Jumlah Tamu (Tampil Sesuai Tipe) -->
+              <div class="form-row" id="time-guest-row">
+                <div class="form-group" id="time-group" style="display: none;">
+                  <label for="reservation-time" id="time-label">
+                    Jam Kedatangan <span class="required">*</span>
+                  </label>
+                  <input type="time" id="reservation-time" name="reservationTime" class="form-input" value="12:00" min="10:00" max="17:00">
+                  <p id="time-error" class="form-error" role="alert" hidden></p>
+                  <small class="form-hint">Jam buka: 10.00 – 17.00 WIB</small>
+                </div>
+
+                <div class="form-group" id="guest-count-group" style="display: none;">
+                  <label for="guest-count">
+                    Konfirmasi Jumlah Orang yang Datang <span class="required">*</span>
+                  </label>
+                  <input type="text" id="guest-count" name="guestCount" class="form-input" placeholder="Contoh: 5 Orang">
+                  <p id="guest-error" class="form-error" role="alert" hidden></p>
+                  <small class="form-hint">Konfirmasi jumlah tamu untuk penyiapan kapasitas saung lesehan.</small>
+                </div>
+              </div>
+
+              <!-- Nama Lengkap Pemesan (Tampil untuk Semua Tipe) -->
+              <div class="form-group" id="customer-name-group">
+                <label for="customer-name">
+                  Nama Lengkap Pemesan <span class="required">*</span>
+                </label>
+                <input type="text" id="customer-name" name="customerName" class="form-input" placeholder="Contoh: Bpk. Budi Santoso" autocomplete="name" required>
+                <p id="name-error" class="form-error" role="alert" hidden></p>
+              </div>
+
+              <!-- Instansi / Nama Rombongan (Tampil untuk QR & Reservasi) -->
+              <div class="form-group" id="group-name-group">
+                <label for="group-name">
+                  Instansi / Nama Rombongan <span class="optional">(Opsional)</span>
+                </label>
+                <input type="text" id="group-name" name="groupName" class="form-input" placeholder="Contoh: Keluarga Bpk. Budi / Alumni SMA" autocomplete="organization">
+              </div>
+
+              <!-- Nomor WhatsApp (Tampil untuk Reservasi & Bungkus) -->
+              <div class="form-group" id="customer-phone-group" style="display: none;">
+                <label for="customer-phone">
+                  Nomor WhatsApp / HP Aktif <span class="required">*</span>
+                </label>
+                <input type="tel" id="customer-phone" name="customerPhone" class="form-input" placeholder="Contoh: 081219569995" autocomplete="tel">
+                <p id="phone-error" class="form-error" role="alert" hidden></p>
+                <small class="form-hint">Awalan 08 atau 62 (8 hingga 15 digit).</small>
+              </div>
+
+              <!-- Catatan Khusus (Tampil untuk Reservasi & Bungkus) -->
+              <div class="form-group" id="customer-notes-group" style="display: none;">
+                <label for="customer-notes">
+                  Catatan Khusus <span class="optional">(Opsional)</span>
+                </label>
+                <textarea id="customer-notes" name="customerNotes" class="form-textarea" rows="3" placeholder="Tingkat kepedasan sambal, permintaan saung lesehan tertentu, atau instruksi khusus..."></textarea>
+              </div>
+
+              <!-- Sakelar Switch Mode Ojol (Khusus Bungkus) -->
+              <div class="form-group ojol-toggle-container" id="ojol-container" style="display: none;">
                 <div class="ojol-toggle-wrapper">
                   <label class="ojol-switch" for="ojol-mode-toggle" title="Aktifkan Mode Ojol untuk pesanan driver online">
                     <input type="checkbox" id="ojol-mode-toggle" name="isOjol">
@@ -416,50 +499,7 @@
                 <small class="form-hint">Masukkan kode / nomor pesanan yang tertera pada aplikasi GoFood / GrabFood driver.</small>
               </div>
 
-              <!-- Opsi Tipe Layanan: Reservasi Saung vs Take Away -->
-              <div class="form-group" id="service-type-container">
-                <label>Pilihan Tipe Pemesanan <span class="required">*</span></label>
-                <div class="service-type-toggle">
-                  <div class="service-type-option">
-                    <input type="radio" id="service-dine-in" name="serviceType" value="dine-in" checked>
-                    <label for="service-dine-in" class="service-type-label">
-                      <span>🏡 Makan di Tempat</span>
-                      <small style="font-weight: normal; font-size: 0.75rem;">(Reservasi Meja / Saung)</small>
-                    </label>
-                  </div>
-
-                  <div class="service-type-option">
-                    <input type="radio" id="service-take-away" name="serviceType" value="take-away">
-                    <label for="service-take-away" class="service-type-label">
-                      <span>🥡 Bawa Pulang</span>
-                      <small style="font-weight: normal; font-size: 0.75rem;">(Bungkus / Take Away)</small>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Baris Jam Kedatangan & Jumlah Tamu -->
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="reservation-time" id="time-label">
-                    Jam Kedatangan <span class="required">*</span>
-                  </label>
-                  <input type="time" id="reservation-time" name="reservationTime" class="form-input" value="12:00" min="10:00" max="17:00" required>
-                  <p id="time-error" class="form-error" role="alert" hidden></p>
-                  <small class="form-hint">Jam buka: 10.00 – 17.00 WIB</small>
-                </div>
-
-                <div class="form-group" id="guest-count-group">
-                  <label for="guest-count">
-                    Konfirmasi Jumlah Orang yang Datang <span class="required">*</span>
-                  </label>
-                  <input type="text" id="guest-count" name="guestCount" class="form-input" placeholder="Contoh: 5 Orang" required>
-                  <p id="guest-error" class="form-error" role="alert" hidden></p>
-                  <small class="form-hint">Konfirmasi jumlah tamu untuk penyiapan kapasitas saung lesehan.</small>
-                </div>
-              </div>
-
-              <!-- Pilihan Metode Pengambilan Pesanan Bungkus (Khusus Take Away) -->
+              <!-- Pilihan Metode Pengambilan Pesanan Bungkus (Khusus Bungkus) -->
               <div class="form-group" id="takeaway-method-group" style="display: none;">
                 <label id="takeaway-method-label">Metode Pengambilan Pesanan Bungkus <span class="required">*</span></label>
                 <div class="takeaway-method-options" role="radiogroup" aria-labelledby="takeaway-method-label">
@@ -483,7 +523,7 @@
                 </div>
               </div>
 
-              <!-- Pilihan Sarung Tangan Plastik (Hand Glove) Khusus Take Away -->
+              <!-- Pilihan Sarung Tangan Plastik (Hand Glove) Khusus Bungkus -->
               <div class="form-group" id="handglove-group" style="display: none;">
                 <label id="handglove-label">Sarung Tangan Plastik (Hand Glove) <span class="required">*</span></label>
                 <div class="handglove-options" role="radiogroup" aria-labelledby="handglove-label">
@@ -497,37 +537,6 @@
                   </label>
                 </div>
                 <small class="form-hint">Disediakan sarung tangan plastik sekali pakai agar santap hidangan bungkus lebih nyaman dan higienis.</small>
-              </div>
-
-              <div class="form-group">
-                <label for="customer-name">
-                  Nama Lengkap Pemesan <span class="required">*</span>
-                </label>
-                <input type="text" id="customer-name" name="customerName" class="form-input" placeholder="Contoh: Bpk. Budi Santoso" autocomplete="name" required>
-                <p id="name-error" class="form-error" role="alert" hidden></p>
-              </div>
-
-              <div class="form-group">
-                <label for="group-name">
-                  Instansi / Nama Rombongan <span class="optional">(Opsional)</span>
-                </label>
-                <input type="text" id="group-name" name="groupName" class="form-input" placeholder="Contoh: Keluarga Bpk. Budi / Alumni SMA" autocomplete="organization">
-              </div>
-
-              <div class="form-group">
-                <label for="customer-phone">
-                  Nomor WhatsApp / HP Aktif <span class="required">*</span>
-                </label>
-                <input type="tel" id="customer-phone" name="customerPhone" class="form-input" placeholder="Contoh: 081219569995" autocomplete="tel" required>
-                <p id="phone-error" class="form-error" role="alert" hidden></p>
-                <small class="form-hint">Awalan 08 atau 62 (8 hingga 15 digit).</small>
-              </div>
-
-              <div class="form-group">
-                <label for="customer-notes">
-                  Catatan Khusus <span class="optional">(Opsional)</span>
-                </label>
-                <textarea id="customer-notes" name="customerNotes" class="form-textarea" rows="3" placeholder="Tingkat kepedasan sambal, permintaan saung lesehan tertentu, atau instruksi khusus..."></textarea>
               </div>
 
               <button type="submit" id="submit-order-btn" class="btn btn-primary btn-block btn-lg btn-send-order">

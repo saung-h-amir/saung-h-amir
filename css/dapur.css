@@ -461,6 +461,151 @@ body.fire-alarm-active .dapur-subbar {
   gap: 0.35rem;
 }
 
+.badge-reservasi-dapur {
+  background: #d97706;
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.4);
+}
+
+.badge-qr-dapur {
+  background: #0284c7;
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.badge-takeaway-dapur {
+  background: #475569;
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.kitchen-card.reservasi-card {
+  border-color: #d97706 !important;
+  box-shadow: 0 0 15px rgba(217, 119, 6, 0.35) !important;
+}
+
+.header-reservasi-dapur {
+  background: #2d2616 !important;
+  border-bottom: 2px solid #d97706 !important;
+}
+
+.kitchen-header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kitchen-guest-badge {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-weight: 700;
+  background: #0f172a;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Metadata Pelanggan & Jam Kedatangan Dapur */
+.kitchen-customer-meta {
+  padding: 0.65rem 1rem;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.kitchen-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-icon {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.meta-label {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.meta-value-time {
+  color: #facc15;
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+.meta-value-customer {
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+/* Callout Catatan Khusus Dapur */
+.kitchen-notes-callout {
+  padding: 0.65rem 1rem;
+  background: #451a03;
+  border-bottom: 2px solid #b45309;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  animation: pulse-border 2s infinite;
+}
+
+.callout-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.callout-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.callout-title {
+  color: #fbbf24;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.callout-text {
+  color: #fef3c7;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-bottom-color: #b45309; }
+  50% { border-bottom-color: #f59e0b; }
+}
+
 .badge-addon-alert {
   background: #b45309;
   color: #fef3c7;

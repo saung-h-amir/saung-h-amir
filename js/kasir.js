@@ -997,6 +997,14 @@ async function sendOrderToFirestore() {
    -------------------------------------------------------------------------- */
 let activeCashModalGroup = null;
 
+function getOrderTimestamp(order) {
+  const ts = order.createdAt || order.timestamp;
+  if (!ts) return 0;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (ts.seconds) return ts.seconds * 1000;
+  return new Date(ts).getTime() || 0;
+}
+
 function setupCashierBillsListener() {
   const q = query(
     collection(db, 'orders'),
@@ -1024,16 +1032,30 @@ function setupCashierBillsListener() {
           kodeOjol: order.kodeOjol || order.kodeReferensi || '',
           tickets: [],
           totalHarga: 0,
-          customerName: order.customerName || '',
-          phone: order.phone || ''
+          earliestTimestamp: Infinity
         };
       }
 
       tableGroups[groupKey].tickets.push(order);
       tableGroups[groupKey].totalHarga += Number(order.totalHarga || 0);
+
+      const oTime = getOrderTimestamp(order);
+      if (oTime && oTime < tableGroups[groupKey].earliestTimestamp) {
+        tableGroups[groupKey].earliestTimestamp = oTime;
+      }
     });
 
     const groupsArray = Object.values(tableGroups);
+
+    // Pastikan earliestTimestamp valid
+    groupsArray.forEach((grp) => {
+      if (grp.earliestTimestamp === Infinity) {
+        grp.earliestTimestamp = Date.now();
+      }
+    });
+
+    // Urutkan kartu meja berdasarkan timestamp waktu masuk (FIFO: tiket pertama masuk di posisi paling atas)
+    groupsArray.sort((a, b) => (a.earliestTimestamp || 0) - (b.earliestTimestamp || 0));
 
     // Update Badge Tagihan
     if (dom.badgeUnpaidTables) {
@@ -1065,10 +1087,36 @@ function renderCashierBills(groups) {
 
   groups.forEach((group) => {
     const card = document.createElement('article');
-    card.className = 'bill-card';
 
     const ticketCount = group.tickets.length;
     const isMultiple = ticketCount > 1;
+
+    // Kumpulkan informasi pelanggan dari tiket-tiket dalam grup
+    const custName = group.tickets.map(t => t.namaPemesan || t.customerName).find(n => n && n !== '-' && n !== 'Pelanggan Meja') || group.tickets[0].namaPemesan || group.tickets[0].customerName || '';
+    const grpName = group.tickets.map(t => t.namaRombongan || t.groupName).find(g => g && g !== '-') || group.tickets[0].namaRombongan || group.tickets[0].groupName || '';
+    const phone = group.tickets.map(t => t.nomorWhatsapp || t.phone).find(p => p && p !== '-') || group.tickets[0].nomorWhatsapp || group.tickets[0].phone || '';
+    const notes = group.tickets.map(t => t.catatanKhusus || t.notes).filter(n => n && n !== '-').join('; ') || group.tickets[0].catatanKhusus || group.tickets[0].notes || '';
+    const guestCount = group.tickets.map(t => t.jumlahOrang || t.guestCount).find(g => g && g !== '-') || group.tickets[0].jumlahOrang || group.tickets[0].guestCount || '';
+    const jamKedatangan = group.tickets.map(t => t.jamKedatangan || t.reservationTime).find(j => j && j !== '-') || group.tickets[0].jamKedatangan || group.tickets[0].reservationTime || '';
+    const tglKedatangan = group.tickets.map(t => t.tanggalKedatangan || t.reservationDate).find(d => d && d !== '-') || group.tickets[0].tanggalKedatangan || group.tickets[0].reservationDate || '';
+
+    const isReservasi = group.tickets.some((t) => 
+      t.tipePesanan === 'Reservasi' || 
+      t.serviceType === 'reservasi' || 
+      t.orderType === 'reservasi' || 
+      Boolean(t.isReservasi)
+    );
+    const isQr = group.tickets.some((t) => 
+      t.tipePesanan === 'PESAN LEWAT QR MEJA' || 
+      Boolean(t.isQrOrder)
+    );
+    const isTakeAway = group.tickets.some((t) => 
+      t.orderType === 'take_away' || 
+      t.serviceType === 'take-away' || 
+      t.tipePesanan === 'Take-Away'
+    );
+
+    card.className = `bill-card ${isReservasi ? 'bill-card-reservasi' : ''} ${group.isOjol ? 'bill-card-ojol' : ''}`;
 
     const displayTitle = group.isOjol
       ? `🛵 [GOFOOD - ${group.kodeOjol || 'Driver'}]`
@@ -1115,13 +1163,81 @@ function renderCashierBills(groups) {
     `).join('');
 
     card.innerHTML = `
-      <header class="bill-card-header">
-        <div class="bill-table-info">
-          <strong class="bill-table-name">${displayTitle}</strong>
-          ${isMultiple ? `<span class="bill-tickets-merged-badge">📦 ${ticketCount} Tiket Tergabung</span>` : ''}
+      <header class="bill-card-header ${isReservasi ? 'header-reservasi' : ''}">
+        <div class="bill-header-main-row">
+          <div class="bill-table-info">
+            <strong class="bill-table-name">${displayTitle}</strong>
+            ${isReservasi ? `<span class="badge-reservasi-pill">📅 RESERVASI (${jamKedatangan ? `${jamKedatangan} WIB` : 'Waktu -'})</span>` : ''}
+            ${isQr && !isReservasi ? `<span class="badge-qr-pill">📱 PESAN LEWAT QR MEJA</span>` : ''}
+            ${isTakeAway && !group.isOjol ? `<span class="badge-takeaway-pill">🥡 TAKE-AWAY</span>` : ''}
+            ${isMultiple ? `<span class="bill-tickets-merged-badge">📦 ${ticketCount} Tiket Tergabung</span>` : ''}
+          </div>
+          <div class="bill-total-header">${formatRupiah(group.totalHarga)}</div>
         </div>
-        <div class="bill-total-header">${formatRupiah(group.totalHarga)}</div>
+
+        <div class="bill-header-meta-row">
+          <span class="meta-item-time">⏱️ Masuk: <strong>${formatTimeOnly(group.earliestTimestamp)}</strong></span>
+          ${jamKedatangan ? `<span class="meta-item-plan">🕒 Kedatangan: <strong>${jamKedatangan} WIB</strong></span>` : ''}
+          ${guestCount && guestCount !== '-' ? `<span class="meta-item-guest">👥 <strong>${guestCount}</strong></span>` : ''}
+          ${tglKedatangan ? `<span class="meta-item-date">📆 ${tglKedatangan}</span>` : ''}
+        </div>
       </header>
+
+      <!-- Panel Data Pelanggan & Edit In-Line (Nama, Rombongan, Catatan) -->
+      <div class="bill-customer-info-section">
+        <div class="customer-inline-field">
+          <span class="inline-field-label">👤 Pemesan:</span>
+          <div class="inline-input-box">
+            <input 
+              type="text" 
+              class="inline-editable-input input-customer-name" 
+              data-field="customerName" 
+              value="${escapeHtml(custName)}" 
+              placeholder="Ketik nama pemesan..." 
+              title="Klik untuk langsung edit nama pemesan"
+            >
+          </div>
+        </div>
+
+        <div class="customer-inline-field">
+          <span class="inline-field-label">🏢 Rombongan:</span>
+          <div class="inline-input-box">
+            <input 
+              type="text" 
+              class="inline-editable-input input-group-name" 
+              data-field="groupName" 
+              value="${escapeHtml(grpName)}" 
+              placeholder="Instansi / nama rombongan..." 
+              title="Klik untuk langsung edit rombongan"
+            >
+          </div>
+        </div>
+
+        ${phone && phone !== '-' ? `
+          <div class="customer-inline-field">
+            <span class="inline-field-label">📱 WhatsApp:</span>
+            <div class="inline-phone-display">
+              <a href="https://wa.me/${phone.replace(/[^0-9]/g, '')}" target="_blank" rel="noopener noreferrer" class="link-wa-customer" title="Hubungi Pelanggan via WhatsApp">
+                📞 ${phone}
+              </a>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="customer-inline-field notes-field">
+          <span class="inline-field-label">📝 Catatan:</span>
+          <div class="inline-input-box">
+            <input 
+              type="text" 
+              class="inline-editable-input input-customer-notes" 
+              data-field="notes" 
+              value="${escapeHtml(notes)}" 
+              placeholder="Catatan khusus pelanggan..." 
+              title="Klik untuk langsung edit catatan"
+            >
+          </div>
+        </div>
+      </div>
 
       <div class="bill-items-list">
         ${itemsHtml}
@@ -1148,6 +1264,30 @@ function renderCashierBills(groups) {
         </div>
       </footer>
     `;
+
+    // Pasang Event Listener Inline Edit (onblur & Enter)
+    card.querySelectorAll('.inline-editable-input').forEach((input) => {
+      input.addEventListener('focus', () => {
+        input.setAttribute('data-original-val', input.value.trim());
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          input.blur();
+        }
+      });
+
+      input.addEventListener('blur', async () => {
+        const field = input.getAttribute('data-field');
+        const newVal = input.value.trim();
+        const origVal = input.getAttribute('data-original-val') || '';
+
+        if (newVal === origVal) return;
+
+        await handleInlineUpdateCustomerField(group, field, newVal, input);
+      });
+    });
 
     // Event Stepper Minus & Plus Inline Langsung Update Firebase
     card.querySelectorAll('.btn-bill-minus').forEach((btn) => {
@@ -1198,6 +1338,52 @@ function renderCashierBills(groups) {
 
     dom.cashierBillsContainer.appendChild(card);
   });
+}
+
+async function handleInlineUpdateCustomerField(group, field, newValue, inputEl) {
+  if (!group || !group.tickets || group.tickets.length === 0) return;
+
+  if (inputEl) {
+    inputEl.classList.add('inline-updating');
+  }
+
+  try {
+    for (const ticket of group.tickets) {
+      const updateData = {
+        [field]: newValue,
+        updatedAt: serverTimestamp()
+      };
+
+      // Sinkronkan nama field padanan
+      if (field === 'customerName') {
+        updateData.namaPemesan = newValue;
+      } else if (field === 'groupName') {
+        updateData.namaRombongan = newValue;
+      } else if (field === 'notes') {
+        updateData.catatanKhusus = newValue;
+        updateData.customerNotes = newValue;
+      }
+
+      await updateDoc(doc(db, 'orders', ticket.id), updateData);
+    }
+
+    if (inputEl) {
+      inputEl.setAttribute('data-original-val', newValue);
+      inputEl.classList.remove('inline-updating');
+      inputEl.classList.add('inline-update-success');
+      setTimeout(() => inputEl.classList.remove('inline-update-success'), 1200);
+    }
+
+    const fieldLabel = field === 'customerName' ? 'Nama Pemesan' : (field === 'groupName' ? 'Nama Rombongan' : 'Catatan');
+    showToast(`${fieldLabel} berhasil diperbarui!`, 'success');
+  } catch (err) {
+    console.error('Gagal memperbarui data pelanggan:', err);
+    if (inputEl) {
+      inputEl.classList.remove('inline-updating');
+      inputEl.classList.add('inline-update-error');
+    }
+    alert('Gagal menyimpan perubahan: ' + (err.message || 'Kesalahan jaringan.'));
+  }
 }
 
 /* --------------------------------------------------------------------------

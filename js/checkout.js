@@ -61,9 +61,10 @@ export async function checkIsAddonOrder(nomorMeja) {
 }
 
 /**
- * Validasi Formulir Pemesanan & Data Meja / Mode Ojol
+ * Validasi Formulir Pemesanan & Data Meja / Mode Ojol Berdasarkan Tipe Pesanan
  */
 export function validateCheckoutForm({
+  tipePesanan,
   tableNumber,
   isOjol,
   ojolRefCode,
@@ -71,6 +72,7 @@ export function validateCheckoutForm({
   groupName,
   phone,
   serviceType,
+  reservationDate,
   reservationTime,
   guestCount,
   notes,
@@ -78,7 +80,20 @@ export function validateCheckoutForm({
   takeawayMethod
 }) {
   const errors = {};
-  const isOjolActive = Boolean(isOjol);
+
+  // Deteksi tipe pesanan yang aktif
+  let activeType = tipePesanan;
+  if (!activeType) {
+    if (tableNumber === 'Take-Away' || tableNumber === 'Take-Away (Bungkus)' || serviceType === 'take-away') {
+      activeType = 'takeaway';
+    } else if (serviceType === 'reservasi' || tableNumber === 'Reservasi Saung') {
+      activeType = 'reservasi';
+    } else {
+      activeType = 'qr';
+    }
+  }
+
+  const isOjolActive = Boolean(isOjol) && activeType === 'takeaway';
   const trimmedTable = (tableNumber || '').trim();
   const trimmedRefCode = (ojolRefCode || '').trim();
   let trimmedName = (customerName || '').trim();
@@ -86,11 +101,8 @@ export function validateCheckoutForm({
   const trimmedNotes = (notes || '').trim();
   const trimmedGuest = (guestCount || '').trim();
   const normalizedPhone = normalizePhone(phone || '');
-  const selectedService =
-    trimmedTable === 'Take-Away (Bungkus)' || trimmedTable === 'Take-Away' || isOjolActive
-      ? 'take-away'
-      : (serviceType === 'take-away' ? 'take-away' : 'dine-in');
   const trimmedTime = (reservationTime || '').trim();
+  const trimmedDate = (reservationDate || '').trim();
   const isHandGloveNeeded = Boolean(needHandGlove);
   const selectedTakeawayMethod = takeawayMethod === 'gosend' ? 'gosend' : 'self-pickup';
   const takeawayMethodText =
@@ -98,59 +110,111 @@ export function validateCheckoutForm({
       ? 'Diambil oleh Kurir Go-Send / GrabExpress'
       : 'Ambil Sendiri Langsung ke Restoran';
 
-  // 1. Validasi Nomor Meja
-  if (!trimmedTable) {
-    errors.tableNumber = 'Pilih nomor meja (Meja 1–15) atau Take-Away.';
-  }
-
-  // 2. Validasi Mode Ojol & Kode Referensi
-  if (isOjolActive) {
-    if (!trimmedRefCode) {
-      errors.ojolRefCode = 'Masukkan Kode Referensi Pesanan (contoh: GF-1234 atau 4 digit).';
-    } else if (trimmedRefCode.length < 2 || trimmedRefCode.length > 50) {
-      errors.ojolRefCode = 'Kode referensi harus terdiri dari 2 hingga 50 karakter.';
+  // 1. Validasi Berdasarkan Tipe Pesanan
+  if (activeType === 'qr') {
+    // 🍽️ Pesan Lewat Meja (Dine-In via QR)
+    // TAMPILKAN HANYA: Nama Lengkap, Nama Rombongan, Nomor/Area Meja
+    if (!trimmedTable || trimmedTable === 'Take-Away (Bungkus)' || trimmedTable === 'Take-Away') {
+      errors.tableNumber = 'Silakan pilih nomor meja Anda (Meja 1–15).';
     }
-
-    if (!trimmedName) {
-      trimmedName = `Driver Ojol (${trimmedRefCode || 'GoFood'})`;
-    }
-  }
-
-  // 3. Validasi Nama Pemesan (untuk non-ojol)
-  if (!isOjolActive) {
     if (trimmedName.length < 2 || trimmedName.length > 80) {
       errors.customerName = 'Nama pemesan harus terdiri dari 2 hingga 80 karakter.';
     }
+  } else if (activeType === 'reservasi') {
+    // 📅 Reservasi (Datang Nanti)
+    // TAMPILKAN: Nama Lengkap, Rombongan, Nomor WhatsApp, Jumlah Orang, Catatan, Tanggal & Jam
+    if (trimmedName.length < 2 || trimmedName.length > 80) {
+      errors.customerName = 'Nama pemesan harus terdiri dari 2 hingga 80 karakter.';
+    }
+    if (!normalizedPhone) {
+      errors.phone = 'Nomor WhatsApp wajib diisi untuk konfirmasi reservasi.';
+    } else {
+      const isPhoneDigits = /^\d{8,15}$/.test(normalizedPhone);
+      const validPrefix = normalizedPhone.startsWith('08') || normalizedPhone.startsWith('62');
+      if (!isPhoneDigits || !validPrefix) {
+        errors.phone = 'Nomor WhatsApp harus 8–15 digit dengan awalan 08 atau 62.';
+      }
+    }
+    if (!trimmedGuest) {
+      errors.guestCount = 'Konfirmasi jumlah orang yang akan datang (contoh: 5 Orang).';
+    }
+    if (!trimmedTime) {
+      errors.reservationTime = 'Tentukan jam rencana kedatangan (10.00 – 17.00 WIB).';
+    }
+    if (!trimmedDate) {
+      errors.reservationDate = 'Pilih tanggal rencana kedatangan.';
+    }
+  } else if (activeType === 'takeaway') {
+    // 🥡 Bungkus (Take-Away)
+    // TAMPILKAN: Nama Lengkap, Nomor WhatsApp, Catatan, dan Jam Pengambilan
+    if (isOjolActive) {
+      if (!trimmedRefCode) {
+        errors.ojolRefCode = 'Masukkan Kode Referensi Pesanan (contoh: GF-1234 atau 4 digit).';
+      } else if (trimmedRefCode.length < 2 || trimmedRefCode.length > 50) {
+        errors.ojolRefCode = 'Kode referensi harus terdiri dari 2 hingga 50 karakter.';
+      }
+      if (!trimmedName) {
+        trimmedName = `Driver Ojol (${trimmedRefCode || 'GoFood'})`;
+      }
+    } else {
+      if (trimmedName.length < 2 || trimmedName.length > 80) {
+        errors.customerName = 'Nama pemesan harus terdiri dari 2 hingga 80 karakter.';
+      }
+      if (!normalizedPhone) {
+        errors.phone = 'Nomor WhatsApp wajib diisi agar dapur dapat menghubungi saat pesanan siap.';
+      } else {
+        const isPhoneDigits = /^\d{8,15}$/.test(normalizedPhone);
+        const validPrefix = normalizedPhone.startsWith('08') || normalizedPhone.startsWith('62');
+        if (!isPhoneDigits || !validPrefix) {
+          errors.phone = 'Nomor WhatsApp harus 8–15 digit dengan awalan 08 atau 62.';
+        }
+      }
+    }
+    if (!trimmedTime) {
+      errors.reservationTime = 'Tentukan jam rencana pengambilan pesanan bungkus.';
+    }
   }
 
-  // 4. Validasi Nomor Telepon
-  if (!isOjolActive && normalizedPhone) {
-    const isPhoneDigits = /^\d{8,15}$/.test(normalizedPhone);
-    const validPrefix =
-      normalizedPhone.startsWith('08') || normalizedPhone.startsWith('62');
-    if (!isPhoneDigits || !validPrefix) {
-      errors.phone = 'Nomor WhatsApp harus 8–15 digit dengan awalan 08 atau 62.';
-    }
+  // Tentukan label dan nilai sanitasi
+  let finalTable = trimmedTable;
+  let finalServiceType = 'dine-in';
+  let finalServiceLabel = 'Pesan Lewat Meja';
+  let finalTipePesanan = 'PESAN LEWAT QR MEJA';
+
+  if (activeType === 'qr') {
+    finalTable = trimmedTable || 'Meja 1';
+    finalServiceType = 'dine-in';
+    finalServiceLabel = `Pesan Lewat Meja (${finalTable})`;
+    finalTipePesanan = 'PESAN LEWAT QR MEJA';
+  } else if (activeType === 'reservasi') {
+    finalTable = 'Reservasi Saung';
+    finalServiceType = 'reservasi';
+    finalServiceLabel = 'Reservasi Saung Lesehan';
+    finalTipePesanan = 'Reservasi';
+  } else if (activeType === 'takeaway') {
+    finalTable = 'Take-Away';
+    finalServiceType = 'take-away';
+    finalServiceLabel = isOjolActive ? `Mode Ojol (${trimmedRefCode || 'Delivery'})` : 'Bungkus (Take-Away)';
+    finalTipePesanan = 'Take-Away';
   }
 
   return {
     valid: Object.keys(errors).length === 0,
     errors,
     sanitized: {
-      tableNumber: trimmedTable || (isOjolActive ? 'Take-Away' : 'Meja 1'),
+      tipePesanan: finalTipePesanan,
+      tableNumber: finalTable,
       isOjol: isOjolActive,
       ojolRefCode: trimmedRefCode,
-      customerName: trimmedName || (isOjolActive ? 'Driver Ojol' : 'Pelanggan Meja'),
-      groupName: trimmedGroup || '-',
-      phone: normalizedPhone || '-',
-      serviceType: selectedService,
-      serviceLabel:
-        selectedService === 'dine-in'
-          ? `Makan di Tempat (${trimmedTable})`
-          : (isOjolActive ? `Mode Ojol (${trimmedRefCode || 'Delivery'})` : 'Bungkus (Take-Away)'),
+      customerName: trimmedName || (isOjolActive ? 'Driver Ojol' : (activeType === 'qr' ? 'Pelanggan Meja' : 'Pelanggan')),
+      groupName: (activeType === 'takeaway') ? '-' : (trimmedGroup || '-'),
+      phone: (activeType === 'qr') ? '-' : (normalizedPhone || '-'),
+      serviceType: finalServiceType,
+      serviceLabel: finalServiceLabel,
       reservationTime: trimmedTime || '12:00',
-      guestCount: trimmedGuest || '-',
-      notes: trimmedNotes || '-',
+      reservationDate: trimmedDate,
+      guestCount: (activeType === 'reservasi') ? (trimmedGuest || '-') : '-',
+      notes: (activeType === 'qr') ? '-' : (trimmedNotes || '-'),
       needHandGlove: isHandGloveNeeded,
       handGloveText: isHandGloveNeeded ? 'Ya, perlu sarung tangan plastik' : 'Tidak perlu',
       takeawayMethod: selectedTakeawayMethod,
@@ -181,21 +245,44 @@ export async function sendOrderToFirestore(orderData) {
     throw new Error('Data pesanan tidak boleh kosong.');
   }
 
-  const nomorMejaClean = String(orderData.nomorMeja || orderData.tableNumber || 'Take-Away').trim();
+  let nomorMejaClean = String(orderData.nomorMeja || orderData.tableNumber || '').trim();
   const isTakeAway =
     nomorMejaClean === 'Take-Away' ||
     nomorMejaClean === 'Take-Away (Bungkus)' ||
     Boolean(orderData.isOjol) ||
     orderData.orderType === 'take_away' ||
-    orderData.serviceType === 'take-away';
+    orderData.serviceType === 'take-away' ||
+    orderData.tipePesanan === 'Take-Away';
 
-  const orderType = isTakeAway ? 'take_away' : 'dine_in';
+  // Tentukan Tipe Pesanan (Dine-in / Take-Away / Reservasi)
+  let tipePesanan = String(orderData.tipePesanan || '').trim();
+  if (!tipePesanan) {
+    if (isTakeAway) {
+      tipePesanan = 'Take-Away';
+    } else if (orderData.isReservasi || orderData.serviceType === 'reservasi') {
+      tipePesanan = 'Reservasi';
+    } else {
+      tipePesanan = 'PESAN LEWAT QR MEJA';
+    }
+  }
+
+  if (tipePesanan === 'Reservasi') {
+    if (!nomorMejaClean || nomorMejaClean === 'Take-Away' || nomorMejaClean === 'Take-Away (Bungkus)') {
+      nomorMejaClean = 'Reservasi Saung';
+    }
+  } else if (tipePesanan === 'Take-Away') {
+    nomorMejaClean = 'Take-Away';
+  } else if (!nomorMejaClean) {
+    nomorMejaClean = 'Meja 1';
+  }
+
+  const orderType = tipePesanan === 'Take-Away' ? 'take_away' : 'dine_in';
   const isOjol = Boolean(orderData.isOjol);
   const kodeOjol = String(orderData.kodeOjol || orderData.kodeReferensi || orderData.ojolRefCode || '').trim();
 
   // Cek apakah meja ini sudah punya pesanan belum lunas (isAddon)
   let isAddon = Boolean(orderData.isAddon);
-  if (orderData.isAddon === undefined && !isTakeAway) {
+  if (orderData.isAddon === undefined && tipePesanan === 'PESAN LEWAT QR MEJA') {
     isAddon = await checkIsAddonOrder(nomorMejaClean);
   }
 
@@ -222,24 +309,78 @@ export async function sendOrderToFirestore(orderData) {
       : formattedItems.reduce((acc, it) => acc + it.subtotal, 0)
   );
 
+  const jamKedatangan = String(
+    orderData.jamKedatangan || orderData.reservationTime || ''
+  ).trim();
+
+  const jumlahOrang = String(
+    orderData.jumlahOrang || orderData.guestCount || ''
+  ).trim();
+
+  const namaPemesan = String(
+    orderData.namaPemesan || orderData.customerName || ''
+  ).trim();
+
+  const namaRombongan = String(
+    orderData.namaRombongan || orderData.groupName || ''
+  ).trim();
+
+  const nomorWhatsapp = String(
+    orderData.nomorWhatsapp || orderData.phone || orderData.customerPhone || ''
+  ).trim();
+
+  const catatanKhusus = String(
+    orderData.catatanKhusus || orderData.notes || orderData.customerNotes || ''
+  ).trim();
+
+  const tanggalKedatangan = String(
+    orderData.tanggalKedatangan || orderData.reservationDate || ''
+  ).trim();
+
+  const isQrOrder = Boolean(
+    orderData.isQrOrder ||
+    tipePesanan === 'PESAN LEWAT QR MEJA' ||
+    (!isTakeAway && !isOjol)
+  );
+
   const payload = {
     nomorMeja: nomorMejaClean,
+    tipePesanan: tipePesanan,
     orderType: orderType,
+    serviceType: isTakeAway ? 'take-away' : (tipePesanan === 'Reservasi' ? 'reservasi' : 'dine-in'),
     isOjol: isOjol,
     kodeOjol: isOjol ? kodeOjol : '',
     isAddon: isAddon,
+    isQrOrder: isQrOrder,
     items: formattedItems,
     totalHarga: totalHarga,
+    status: 'baru',
     kitchenStatus: 'baru',
     paymentStatus: 'belum_lunas',
     paymentMethod: String(orderData.paymentMethod || ''),
+    
+    // Semua Informasi Form Pelanggan Sesuai Instruksi (Bilingual field names agar kompatibel 100%)
+    namaPemesan: namaPemesan || (isOjol ? 'Driver Ojol' : 'Pelanggan Meja'),
+    customerName: namaPemesan || (isOjol ? 'Driver Ojol' : 'Pelanggan Meja'),
+    namaRombongan: namaRombongan || '-',
+    groupName: namaRombongan || '-',
+    nomorWhatsapp: nomorWhatsapp || '-',
+    phone: nomorWhatsapp || '-',
+    catatanKhusus: catatanKhusus || '-',
+    notes: catatanKhusus || '-',
+    jamKedatangan: jamKedatangan || '12:00',
+    reservationTime: jamKedatangan || '12:00',
+    jumlahOrang: jumlahOrang || '-',
+    guestCount: jumlahOrang || '-',
+    tanggalKedatangan: tanggalKedatangan,
+    reservationDate: tanggalKedatangan,
+
+    timestamp: serverTimestamp(),
     createdAt: serverTimestamp()
   };
 
-  // Tambahkan konteks tambahan jika tersedia
-  if (orderData.customerName) payload.customerName = String(orderData.customerName);
-  if (orderData.phone && orderData.phone !== '-') payload.phone = String(orderData.phone);
-  if (orderData.notes && orderData.notes !== '-') payload.notes = String(orderData.notes);
+  if (orderData.takeawayMethod) payload.takeawayMethod = String(orderData.takeawayMethod);
+  if (orderData.needHandGlove !== undefined) payload.needHandGlove = Boolean(orderData.needHandGlove);
 
   const ordersCollection = collection(db, 'orders');
   const docRef = await addDoc(ordersCollection, payload);

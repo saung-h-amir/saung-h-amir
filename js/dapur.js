@@ -226,6 +226,16 @@ function formatTimeOnly(dateObj) {
   return `${pad(d.getHours())}:${pad(d.getMinutes())} WIB`;
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 /* --------------------------------------------------------------------------
    5. Listener Real-Time Antrean Dapur (KDS)
    -------------------------------------------------------------------------- */
@@ -248,12 +258,16 @@ function setupKitchenQueueListener() {
       currentIds.add(docSnap.id);
     });
 
-    // Urutkan tiket paling lama masuk di atas (FIFO - First In First Out)
-    orders.sort((a, b) => {
-      const tA = a.createdAt ? (a.createdAt.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime()) : 0;
-      const tB = b.createdAt ? (b.createdAt.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime()) : 0;
-      return tA - tB;
-    });
+    // Urutkan tiket berdasarkan timestamp antrean masuk (FIFO - First In First Out)
+    const getOrderTimestamp = (o) => {
+      const ts = o.createdAt || o.timestamp;
+      if (!ts) return 0;
+      if (typeof ts.toMillis === 'function') return ts.toMillis();
+      if (ts.seconds) return ts.seconds * 1000;
+      return new Date(ts).getTime() || 0;
+    };
+
+    orders.sort((a, b) => getOrderTimestamp(a) - getOrderTimestamp(b));
 
     // Deteksi Tiket Baru Masuk
     if (!isKitchenFirstLoad) {
@@ -314,9 +328,19 @@ function renderKitchenCards(orders) {
     const isOjol = Boolean(order.isOjol);
     const isNew = recentlyAddedOrderIds.has(order.id);
 
-    card.className = `kitchen-card ${isAddon ? 'addon-card' : ''} ${isOjol ? 'ojol-card' : ''} ${isNew ? 'new-ticket-flash' : ''}`;
+    // Ambil semua data pelanggan yang ditarik dari Firebase
+    const custName = (order.namaPemesan || order.customerName || '').trim();
+    const grpName = (order.namaRombongan || order.groupName || '').trim();
+    const jamKedatangan = (order.jamKedatangan || order.reservationTime || '').trim();
+    const tglKedatangan = (order.tanggalKedatangan || order.reservationDate || '').trim();
+    const catatanKhusus = (order.catatanKhusus || order.customerNotes || order.notes || '').trim();
+    const isReservasi = order.tipePesanan === 'Reservasi' || order.serviceType === 'reservasi' || Boolean(order.isReservasi);
+    const isQr = order.tipePesanan === 'PESAN LEWAT QR MEJA' || Boolean(order.isQrOrder) || (order.orderType === 'dine_in' && !order.isCashierInput);
+    const isTakeAway = order.orderType === 'take_away' || order.serviceType === 'take-away' || order.tipePesanan === 'Take-Away';
 
-    const timeStr = formatTimeOnly(order.createdAt);
+    card.className = `kitchen-card ${isReservasi ? 'reservasi-card' : ''} ${isAddon ? 'addon-card' : ''} ${isOjol ? 'ojol-card' : ''} ${isNew ? 'new-ticket-flash' : ''}`;
+
+    const timeStr = formatTimeOnly(order.createdAt || order.timestamp);
     const tableTitle = isOjol
       ? `🛵 [GOFOOD - Kode: ${order.kodeOjol || order.kodeReferensi || 'Driver'}]`
       : order.nomorMeja;
@@ -330,11 +354,35 @@ function renderKitchenCards(orders) {
         </div>
       `;
     }
+    if (isReservasi) {
+      badgeBarHtml += `
+        <div class="badge-reservasi-dapur">
+          <span>📅</span>
+          <span>RESERVASI SAUNG | Jam Siap: ${jamKedatangan ? `${jamKedatangan} WIB` : 'Sesuai Jadwal'}</span>
+        </div>
+      `;
+    }
+    if (isQr && !isReservasi) {
+      badgeBarHtml += `
+        <div class="badge-qr-dapur">
+          <span>📱</span>
+          <span>PESAN LEWAT QR MEJA</span>
+        </div>
+      `;
+    }
     if (isOjol) {
       badgeBarHtml += `
         <div class="badge-ojol-alert">
           <span>🛵</span>
           <span>Pesanan Ojek Online (GoFood/GrabFood)</span>
+        </div>
+      `;
+    }
+    if (isTakeAway && !isOjol) {
+      badgeBarHtml += `
+        <div class="badge-takeaway-dapur">
+          <span>🥡</span>
+          <span>Bungkus / Take-Away (${jamKedatangan ? `Jam Ambil: ${jamKedatangan} WIB` : 'Segera'})</span>
         </div>
       `;
     }
@@ -365,14 +413,47 @@ function renderKitchenCards(orders) {
     }).join('');
 
     card.innerHTML = `
-      <header class="kitchen-card-header">
-        <strong class="kitchen-table-name">${tableTitle}</strong>
-        <span class="kitchen-time-badge">🕒 ${timeStr}</span>
+      <header class="kitchen-card-header ${isReservasi ? 'header-reservasi-dapur' : ''}">
+        <div class="kitchen-header-title-wrap">
+          <strong class="kitchen-table-name">${tableTitle}</strong>
+          ${order.guestCount && order.guestCount !== '-' ? `<span class="kitchen-guest-badge">👥 ${order.guestCount}</span>` : ''}
+        </div>
+        <span class="kitchen-time-badge">🕒 Masuk: ${timeStr}</span>
       </header>
+
       ${badgeBarHtml ? `<div class="kitchen-badge-bar">${badgeBarHtml}</div>` : ''}
+
+      <!-- Informasi Jam Kedatangan & Pemesan untuk Koki -->
+      <div class="kitchen-customer-meta">
+        <div class="kitchen-meta-row">
+          <span class="meta-icon">⏰</span>
+          <span class="meta-label">Jam Rencana / Kedatangan:</span>
+          <strong class="meta-value-time">${jamKedatangan ? `${jamKedatangan} WIB` : 'Segera / Langsung Masak'}</strong>
+        </div>
+        ${custName && custName !== '-' && custName !== 'Pelanggan Meja' ? `
+          <div class="kitchen-meta-row">
+            <span class="meta-icon">👤</span>
+            <span class="meta-label">Pemesan:</span>
+            <strong class="meta-value-customer">${escapeHtml(custName)} ${grpName && grpName !== '-' ? `(${escapeHtml(grpName)})` : ''}</strong>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- Kotak Catatan Khusus Dapur (Mencolok Kuning/Amber untuk Instruksi Memasak) -->
+      ${catatanKhusus && catatanKhusus !== '-' ? `
+        <div class="kitchen-notes-callout">
+          <span class="callout-icon">📢</span>
+          <div class="callout-body">
+            <strong class="callout-title">INSTRUKSI / CATATAN KHUSUS:</strong>
+            <p class="callout-text">${escapeHtml(catatanKhusus)}</p>
+          </div>
+        </div>
+      ` : ''}
+
       <div class="kitchen-items-list">
         ${itemsHtml}
       </div>
+
       <footer class="kitchen-card-footer">
         <button type="button" class="btn-kitchen-print" data-id="${order.id}">
           <span>🖨️</span>
@@ -419,10 +500,15 @@ function renderKitchenCards(orders) {
 function printKitchenTicket(order) {
   if (!dom.printArea) return;
 
-  const waktu = formatDate(order.createdAt);
+  const waktu = formatDate(order.createdAt || order.timestamp);
   const tableTitle = order.isOjol
     ? `[GOFOOD - Kode: ${order.kodeOjol || order.kodeReferensi || 'Driver'}]`
     : order.nomorMeja;
+
+  const custName = order.namaPemesan || order.customerName || '-';
+  const grpName = order.namaRombongan || order.groupName || '-';
+  const jamKedatangan = order.jamKedatangan || order.reservationTime || '-';
+  const catatanKhusus = order.catatanKhusus || order.customerNotes || order.notes || '-';
 
   const itemsList = (order.items || []).map((item) => {
     const qty = item.qty || 1;
@@ -443,9 +529,16 @@ function printKitchenTicket(order) {
     <div class="print-center">Dimasak Dadakan</div>
     <div class="print-divider"></div>
     <div class="print-row"><span>Meja / Order:</span><strong class="print-item-title">${tableTitle}</strong></div>
+    ${order.tipePesanan ? `<div class="print-row"><span>Tipe:</span><strong>${order.tipePesanan}</strong></div>` : ''}
+    <div class="print-row"><span>Jam Siap/Ambil:</span><strong style="font-size:14px;">${jamKedatangan}</strong></div>
+    <div class="print-row"><span>Pemesan:</span><span>${custName} ${grpName && grpName !== '-' ? `(${grpName})` : ''}</span></div>
     ${order.isAddon ? `<div class="print-bold print-center" style="background:#000; color:#fff; padding:2px;">*** PESANAN TAMBAHAN ***</div>` : ''}
     <div class="print-row"><span>Waktu Pesan:</span><span>${waktu}</span></div>
     <div class="print-row"><span>ID Order:</span><span>${order.id.slice(-6).toUpperCase()}</span></div>
+    ${catatanKhusus && catatanKhusus !== '-' ? `
+      <div class="print-divider"></div>
+      <div class="print-bold" style="background:#000; color:#fff; padding:2px;">CATATAN: ${catatanKhusus}</div>
+    ` : ''}
     <div class="print-divider"></div>
     <div class="print-bold">QTY  MENU & PESANAN</div>
     <div class="print-divider"></div>
