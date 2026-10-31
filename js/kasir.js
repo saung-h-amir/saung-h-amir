@@ -1078,6 +1078,69 @@ function setupCashierBillsListener() {
   });
 }
 
+function setSelectTableValue(selectEl, tableVal) {
+  if (!selectEl) return;
+  if (!tableVal) {
+    selectEl.value = '';
+    return;
+  }
+  const val = String(tableVal).trim();
+
+  // 1. Cek pencocokan langsung dengan value option
+  let opt = selectEl.querySelector(`option[value="${val}"]`);
+
+  // 2. Jika tidak ada, cek pemetaan alias (misal "Meja Kiri Ujung" -> "Meja 12", dsb)
+  if (!opt) {
+    const aliasMap = {
+      'meja kiri ujung': 'Meja 12',
+      'kiri ujung': 'Meja 12',
+      'meja kanan ujung': 'Meja 13',
+      'kanan ujung': 'Meja 13',
+      'meja tengah kanan': 'Meja 14',
+      'tengah kanan': 'Meja 14',
+      'meja tengah kiri': 'Meja 15',
+      'tengah kiri': 'Meja 15',
+      'take away': 'Take-Away',
+      'take-away (bungkus)': 'Take-Away',
+      'bungkus': 'Take-Away'
+    };
+    const targetVal = aliasMap[val.toLowerCase()];
+    if (targetVal) {
+      opt = selectEl.querySelector(`option[value="${targetVal}"]`);
+    }
+  }
+
+  // 3. Jika tidak ada, cari opsi berdasarkan teks
+  if (!opt) {
+    const lower = val.toLowerCase();
+    for (let i = 0; i < selectEl.options.length; i++) {
+      const candidate = selectEl.options[i];
+      if (candidate.text.toLowerCase() === lower || candidate.text.toLowerCase().includes(lower)) {
+        opt = candidate;
+        break;
+      }
+    }
+  }
+
+  if (opt) {
+    opt.selected = true;
+    selectEl.value = opt.value;
+  } else {
+    // 4. Jika nama meja kustom di luar daftar, tambahkan sebagai opsi baru agar nilai tidak hilang
+    const lower = val.toLowerCase();
+    if (!lower.includes('reservasi') && val !== '-') {
+      const customOpt = document.createElement('option');
+      customOpt.value = val;
+      customOpt.textContent = val;
+      customOpt.selected = true;
+      selectEl.appendChild(customOpt);
+      selectEl.value = val;
+    } else {
+      selectEl.value = '';
+    }
+  }
+}
+
 function renderCashierBills(groups) {
   if (!dom.cashierBillsContainer) return;
 
@@ -1209,14 +1272,29 @@ function renderCashierBills(groups) {
         <div class="customer-inline-field field-nomor-meja">
           <span class="inline-field-label">🪑 No. Meja:</span>
           <div class="inline-input-box">
-            <input 
-              type="text" 
-              class="inline-editable-input input-meja" 
+            <select 
+              class="input-meja" 
               data-field="tableNumber" 
-              value="${escapeHtml(currentTableDisplay)}" 
-              placeholder="${isReservasi ? 'Set Meja (contoh: Meja 4)...' : 'Set Nomor Meja (Meja 1-15)...'}" 
-              title="Klik untuk langsung ganti nomor meja"
+              title="Pilih nomor meja"
             >
+              <option value="" disabled ${!currentTableDisplay ? 'selected' : ''}>Pilih Meja...</option>
+              <option value="Meja 1">Meja 1</option>
+              <option value="Meja 2">Meja 2</option>
+              <option value="Meja 3">Meja 3</option>
+              <option value="Meja 4">Meja 4</option>
+              <option value="Meja 5">Meja 5</option>
+              <option value="Meja 6">Meja 6</option>
+              <option value="Meja 7">Meja 7</option>
+              <option value="Meja 8">Meja 8</option>
+              <option value="Meja 9">Meja 9</option>
+              <option value="Meja 10">Meja 10</option>
+              <option value="Meja 11">Meja 11</option>
+              <option value="Meja 12">Meja Kiri Ujung</option>
+              <option value="Meja 13">Meja Kanan Ujung</option>
+              <option value="Meja 14">Meja Tengah Kanan</option>
+              <option value="Meja 15">Meja Tengah kiri</option>
+              <option value="Take-Away">Take-Away (Bungkus)</option>
+            </select>
           </div>
         </div>
 
@@ -1300,7 +1378,21 @@ function renderCashierBills(groups) {
       </footer>
     `;
 
-    // Pasang Event Listener Inline Edit (onblur & Enter)
+    // Set nilai awal dropdown Meja & pasang Event Listener change
+    const selectMeja = card.querySelector('select.input-meja');
+    if (selectMeja) {
+      if (currentTableDisplay) {
+        setSelectTableValue(selectMeja, currentTableDisplay);
+      }
+
+      selectMeja.addEventListener('change', async () => {
+        const selectedMeja = selectMeja.value.trim();
+        if (!selectedMeja) return;
+        await handleInlineUpdateCustomerField(group, 'tableNumber', selectedMeja, selectMeja);
+      });
+    }
+
+    // Pasang Event Listener Inline Edit untuk Input Teks (Pemesan, Rombongan, Catatan)
     card.querySelectorAll('.inline-editable-input').forEach((input) => {
       input.addEventListener('focus', () => {
         input.setAttribute('data-original-val', input.value.trim());
@@ -1315,32 +1407,8 @@ function renderCashierBills(groups) {
 
       input.addEventListener('blur', async () => {
         const field = input.getAttribute('data-field');
-        let newVal = input.value.trim();
+        const newVal = input.value.trim();
         const origVal = input.getAttribute('data-original-val') || '';
-
-        // Auto-format dan validasi nomor meja
-        if (field === 'tableNumber') {
-          if (!newVal) {
-            if (isReservasi) {
-              if (!origVal) return;
-              newVal = 'Reservasi Saung';
-            } else {
-              input.value = origVal;
-              showToast('Nomor meja tidak boleh kosong.', 'warning');
-              return;
-            }
-          } else {
-            // Jika kasir hanya ketik angka (misal "4" atau "04") -> format jadi "Meja 4"
-            if (/^\d+$/.test(newVal)) {
-              newVal = `Meja ${parseInt(newVal, 10)}`;
-              input.value = newVal;
-            } else if (/^meja\s*\d+$/i.test(newVal)) {
-              const num = parseInt(newVal.replace(/\D/g, ''), 10);
-              newVal = `Meja ${num}`;
-              input.value = newVal;
-            }
-          }
-        }
 
         if (newVal === origVal) return;
 
