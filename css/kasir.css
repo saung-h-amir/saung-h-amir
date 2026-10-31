@@ -1546,16 +1546,24 @@ body {
   transition: all 0.2s ease;
 }
 
-.bill-card.bill-card-reservasi {
+.bill-card.bill-card-reservasi,
+.bill-card.kartu-reservasi-pending {
   background: #fffdf5;
   border: 2.5px solid #d97706 !important;
   box-shadow: 0 6px 18px rgba(217, 119, 6, 0.18);
 }
 
 .bill-card.bill-card-reservasi .bill-card-header,
+.bill-card.kartu-reservasi-pending .bill-card-header,
 .bill-card-header.header-reservasi {
   background: #fef3c7 !important;
   border-bottom: 2px solid #fde68a !important;
+}
+
+.bill-card.kartu-reservasi-pending .bill-customer-info-section,
+.bill-card-reservasi .bill-customer-info-section {
+  background: #fffbeb;
+  border-bottom-color: #fde68a;
 }
 
 .bill-card-header {
@@ -1764,12 +1772,15 @@ body {
   border-color: #dc2626 !important;
 }
 
-.bill-card-reservasi .field-nomor-meja .inline-field-label {
+.bill-card-reservasi .field-nomor-meja .inline-field-label,
+.kartu-reservasi-pending .field-nomor-meja .inline-field-label {
   color: #b45309;
 }
 
 .bill-card-reservasi .field-nomor-meja select.input-meja,
-.bill-card-reservasi .field-nomor-meja .input-meja {
+.bill-card-reservasi .field-nomor-meja .input-meja,
+.kartu-reservasi-pending .field-nomor-meja select.input-meja,
+.kartu-reservasi-pending .field-nomor-meja .input-meja {
   background-color: #fefce8;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23854d0e'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
   border-color: #fde047;
@@ -1777,13 +1788,16 @@ body {
 }
 
 .bill-card-reservasi .field-nomor-meja select.input-meja:focus,
-.bill-card-reservasi .field-nomor-meja .input-meja:focus {
+.bill-card-reservasi .field-nomor-meja .input-meja:focus,
+.kartu-reservasi-pending .field-nomor-meja select.input-meja:focus,
+.kartu-reservasi-pending .field-nomor-meja .input-meja:focus {
   background-color: #ffffff;
   border-color: #eab308;
   box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.25);
 }
 
-.bill-card-reservasi .field-nomor-meja select.input-meja option[disabled] {
+.bill-card-reservasi .field-nomor-meja select.input-meja option[disabled],
+.kartu-reservasi-pending .field-nomor-meja select.input-meja option[disabled] {
   color: #d97706;
 }
 
@@ -1909,6 +1923,35 @@ body {
   border: 1px solid #bfdbfe;
   padding: 1px 5px;
   border-radius: 4px;
+}
+
+/* ==========================================================================
+   INDIKATOR MENU / TIKET BARU (<= 15 MENIT)
+   ========================================================================== */
+.bill-item-row.item-baru-merah {
+  background-color: #fee2e2 !important;
+  border-left: 4px solid #ef4444 !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  border-radius: 6px;
+  margin: 3px 0;
+  transition: all 0.3s ease;
+}
+
+.bill-item-row.item-baru-merah .bill-item-title {
+  color: #991b1b !important;
+  font-weight: 800;
+}
+
+.bill-item-row.item-baru-merah .bill-item-amount {
+  color: #b91c1c !important;
+}
+
+.bill-item-ticket-badge.badge-ticket-baru {
+  background: #fecaca !important;
+  color: #991b1b !important;
+  border-color: #f87171 !important;
+  font-weight: 800;
 }
 
 /* Stepper Qty Inline [ - ] [ Angka ] [ + ] */

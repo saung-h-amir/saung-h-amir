@@ -1005,11 +1005,31 @@ function getOrderTimestamp(order) {
   return new Date(ts).getTime() || 0;
 }
 
+let currentCashierGroupsCache = [];
+let cashierAutoRefreshTimer = null;
+
 function setupCashierBillsListener() {
   const q = query(
     collection(db, 'orders'),
     where('paymentStatus', '==', 'belum_lunas')
   );
+
+  // Auto-refresh timer: Periksa setiap 1 menit agar indikator merah 15 menit otomatis hilang tanpa refresh
+  if (!cashierAutoRefreshTimer) {
+    cashierAutoRefreshTimer = setInterval(() => {
+      // Lewati refresh jika kasir sedang mengetik atau fokus di form input/select
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) {
+        const container = dom.cashierBillsContainer;
+        if (container && container.contains(activeEl)) {
+          return;
+        }
+      }
+      if (currentCashierGroupsCache && currentCashierGroupsCache.length > 0) {
+        renderCashierBills(currentCashierGroupsCache);
+      }
+    }, 60000);
+  }
 
   onSnapshot(q, (snapshot) => {
     const orders = [];
@@ -1041,7 +1061,8 @@ function setupCashierBillsListener() {
           kodeOjol: order.kodeOjol || order.kodeReferensi || '',
           tickets: [],
           totalHarga: 0,
-          earliestTimestamp: Infinity
+          earliestTimestamp: Infinity,
+          latestTimestamp: 0
         };
       }
 
@@ -1049,22 +1070,34 @@ function setupCashierBillsListener() {
       tableGroups[groupKey].totalHarga += Number(order.totalHarga || 0);
 
       const oTime = getOrderTimestamp(order);
-      if (oTime && oTime < tableGroups[groupKey].earliestTimestamp) {
-        tableGroups[groupKey].earliestTimestamp = oTime;
+      if (oTime) {
+        if (oTime < tableGroups[groupKey].earliestTimestamp) {
+          tableGroups[groupKey].earliestTimestamp = oTime;
+        }
+        if (oTime > tableGroups[groupKey].latestTimestamp) {
+          tableGroups[groupKey].latestTimestamp = oTime;
+        }
       }
     });
 
     const groupsArray = Object.values(tableGroups);
 
-    // Pastikan earliestTimestamp valid
+    // Pastikan earliestTimestamp dan latestTimestamp valid
     groupsArray.forEach((grp) => {
       if (grp.earliestTimestamp === Infinity) {
         grp.earliestTimestamp = Date.now();
       }
+      if (!grp.latestTimestamp) {
+        grp.latestTimestamp = grp.earliestTimestamp;
+      }
     });
 
-    // Urutkan kartu meja berdasarkan timestamp waktu masuk (FIFO: tiket pertama masuk di posisi paling atas)
-    groupsArray.sort((a, b) => (a.earliestTimestamp || 0) - (b.earliestTimestamp || 0));
+    // 1. BALIK URUTAN ANTREAN (TERBARU DI ATAS / DESCENDING)
+    groupsArray.sort((a, b) => {
+      const timeA = a.latestTimestamp || a.earliestTimestamp || 0;
+      const timeB = b.latestTimestamp || b.earliestTimestamp || 0;
+      return timeB - timeA;
+    });
 
     // Update Badge Tagihan
     if (dom.badgeUnpaidTables) {
@@ -1072,6 +1105,7 @@ function setupCashierBillsListener() {
       dom.badgeUnpaidTables.classList.toggle('badge-alert', groupsArray.length > 0);
     }
 
+    currentCashierGroupsCache = groupsArray;
     renderCashierBills(groupsArray);
   }, (err) => {
     console.error('Error onSnapshot tagihan kasir:', err);
@@ -1160,6 +1194,13 @@ function renderCashierBills(groups) {
   groups.forEach((group) => {
     const card = document.createElement('article');
 
+    // 2. URUTKAN TIKET TAMBAHAN DI DALAM KARTU (ASCENDING: Tiket #1 dulu, lalu Tiket #2, dst)
+    group.tickets.sort((t1, t2) => {
+      const time1 = getOrderTimestamp(t1) || 0;
+      const time2 = getOrderTimestamp(t2) || 0;
+      return time1 - time2;
+    });
+
     const ticketCount = group.tickets.length;
     const isMultiple = ticketCount > 1;
 
@@ -1178,6 +1219,16 @@ function renderCashierBills(groups) {
       t.orderType === 'reservasi' || 
       Boolean(t.isReservasi)
     );
+
+    // 3. LOGIKA WARNA RESERVASI:
+    // Periksa apakah meja sudah di-set atau masih KOSONG (belum di-set).
+    const rawMeja = String(group.nomorMeja || '').trim();
+    const isTableSet = Boolean(rawMeja && rawMeja !== 'Reservasi Saung' && !rawMeja.toLowerCase().includes('reservasi') && rawMeja !== '-');
+
+    // JIKA dropdown Meja KOSONG (belum di-set), berikan class .kartu-reservasi-pending (warna kuning/oranye).
+    // JIKA dropdown Meja SUDAH DI-SET, class dihapus sehingga kembali ke warna default (putih/abu-abu).
+    const isReservasiPending = isReservasi && !isTableSet;
+
     const isQr = group.tickets.some((t) => 
       t.tipePesanan === 'PESAN LEWAT QR MEJA' || 
       Boolean(t.isQrOrder)
@@ -1188,30 +1239,32 @@ function renderCashierBills(groups) {
       t.tipePesanan === 'Take-Away'
     );
 
-    card.className = `bill-card ${isReservasi ? 'bill-card-reservasi' : ''} ${group.isOjol ? 'bill-card-ojol' : ''}`;
-
-    const isReservasiUnassigned = isReservasi && (
-      !group.nomorMeja || 
-      group.nomorMeja === 'Reservasi Saung' || 
-      String(group.nomorMeja).toLowerCase().includes('reservasi')
-    );
+    card.className = `bill-card ${isReservasiPending ? 'bill-card-reservasi kartu-reservasi-pending' : ''} ${group.isOjol ? 'bill-card-ojol' : ''}`;
 
     const displayTitle = group.isOjol
       ? `🛵 [GOFOOD - ${group.kodeOjol || 'Driver'}]`
-      : isReservasiUnassigned
+      : isReservasiPending
         ? '📅 Reservasi Saung (Belum Ada Meja)'
         : (group.nomorMeja || 'Tanpa Meja');
 
-    const currentTableDisplay = isReservasiUnassigned
-      ? ''
-      : (group.nomorMeja || '');
+    const currentTableDisplay = isTableSet ? group.nomorMeja : '';
+
+    // 4. INDIKATOR MERAH 15 MENIT UNTUK MENU/TIKET BARU
+    const now = Date.now();
+    const FIFTEEN_MINUTES_MS = 15 * 60 * 1000; // 900.000 milidetik
 
     // Konsolidasikan daftar menu
     const mergedItems = [];
     group.tickets.forEach((ticket, tIdx) => {
+      const ticketTime = getOrderTimestamp(ticket);
+      // Bandingkan timestamp tiket dengan waktu saat ini (selisih <= 15 menit)
+      const isRecent = ticketTime ? ((now - ticketTime) <= FIFTEEN_MINUTES_MS) : true;
+
       (ticket.items || []).forEach((item, itemIdx) => {
         mergedItems.push({
           ticketId: ticket.id,
+          ticketTimestamp: ticketTime,
+          isRecent: isRecent,
           itemIdx: itemIdx,
           ticketNum: tIdx + 1,
           name: item.name || item.nama || 'Menu',
@@ -1224,12 +1277,12 @@ function renderCashierBills(groups) {
     });
 
     const itemsHtml = mergedItems.map((item) => `
-      <div class="bill-item-row inline-edit" data-ticket-id="${item.ticketId}" data-item-idx="${item.itemIdx}">
+      <div class="bill-item-row inline-edit ${item.isRecent ? 'item-baru-merah' : ''}" data-ticket-id="${item.ticketId}" data-item-idx="${item.itemIdx}">
         <div class="bill-item-main-info">
           <div class="bill-item-title-wrap">
             <strong class="bill-item-title">${item.name}</strong>
             ${item.note ? `<small class="bill-item-note">(${item.note})</small>` : ''}
-            ${isMultiple ? `<span class="bill-item-ticket-badge">Tiket #${item.ticketNum}</span>` : ''}
+            ${isMultiple ? `<span class="bill-item-ticket-badge ${item.isRecent ? 'badge-ticket-baru' : ''}">Tiket #${item.ticketNum}${item.isRecent ? ' • Baru' : ''}</span>` : (item.isRecent ? `<span class="bill-item-ticket-badge badge-ticket-baru">Pesanan Baru</span>` : '')}
           </div>
           <span class="bill-item-unit-price">${formatRupiah(item.price)}</span>
         </div>
@@ -1247,7 +1300,7 @@ function renderCashierBills(groups) {
     `).join('');
 
     card.innerHTML = `
-      <header class="bill-card-header ${isReservasi ? 'header-reservasi' : ''}">
+      <header class="bill-card-header ${isReservasiPending ? 'header-reservasi' : ''}">
         <div class="bill-header-main-row">
           <div class="bill-table-info">
             <strong class="bill-table-name">${displayTitle}</strong>
