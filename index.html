@@ -22,6 +22,10 @@
         <span class="top-bar-item">🕒 Setiap Hari (10.00 - 17.00 WIB)</span>
         <span class="top-bar-item">📞 WA: 0812-1956-9995</span>
         <span class="top-bar-item">📍 Cileutik, Cisauk, Legok</span>
+        <div id="mode-status-container" class="mode-status-container" style="display: none;">
+          <span id="mode-status-text" class="mode-status-pill">📱 QR Meja</span>
+          <button type="button" id="btn-change-access-mode" class="btn-change-mode" title="Ubah sumber akses pelanggan">Ganti Jalur</button>
+        </div>
         <span class="top-bar-item staff-portal-top" style="margin-left: auto;">
           <a href="kasir.html" style="color: #fde047; font-weight: 700; text-decoration: none; margin-right: 12px;" title="Buka Portal Kasir POS Staff">💻 Kasir POS</a>
           <a href="dapur.html" style="color: #86efac; font-weight: 700; text-decoration: none;" title="Buka Layar Antrean Dapur & Kasir">🍳 Layar Dapur</a>
@@ -61,7 +65,7 @@
   <main id="main-content">
 
     <!-- 1. Bagian Beranda / Hero Section -->
-    <section id="beranda" class="hero" aria-labelledby="hero-title">
+    <section id="beranda" class="hero non-menu-section" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-content">
           <span class="hero-badge">🍃 Masakan Khas Sunda Autentik Cisauk</span>
@@ -104,7 +108,7 @@
     </section>
 
     <!-- 2. PROMOSI SPESIAL: FREE ASINAN & KOLAK SETIAP WEEKEND -->
-    <section class="section" style="padding-bottom: 0;">
+    <section class="section non-menu-section" style="padding-bottom: 0;">
       <div class="container">
         <article class="weekend-promo-banner">
           <div class="weekend-promo-content">
@@ -147,7 +151,7 @@
     </section>
 
     <!-- 3. TAMPILAN UTAMA: LEMBAR MENU ASLI RESTORAN (katalog.jpeg Showcase Centerpiece) -->
-    <section id="buku-menu" class="section">
+    <section id="buku-menu" class="section non-menu-section">
       <div class="container">
         <article class="menu-sheet-showcase">
           <header class="menu-sheet-header">
@@ -222,7 +226,7 @@
     </section>
 
     <!-- 5. SUASANA RESTORAN & ULASAN GOOGLE MAPS -->
-    <section id="ulasan" class="customer-reviews-section" aria-labelledby="reviews-title">
+    <section id="ulasan" class="customer-reviews-section non-menu-section" aria-labelledby="reviews-title">
       <div class="container">
         <header class="section-header">
           <div class="reviews-meta-badge">
@@ -267,13 +271,13 @@
               </p>
               <span class="review-author">— Bpk. Agus Santoso (Google Maps Review)</span>
             </div>
-          </article>gtfr
+          </article>
         </div>
       </div>
     </section>
 
     <!-- 6. Bagian Tentang Kami & Keunggulan -->
-    <section id="tentang" class="section" aria-labelledby="about-title">
+    <section id="tentang" class="section non-menu-section" aria-labelledby="about-title">
       <div class="container">
         <header class="section-header">
           <span class="section-tag">Warisan Parahyangan</span>
@@ -353,7 +357,43 @@
             </div>
 
             <form id="checkout-form" novalidate>
-              <!-- Pilihan Tipe Pemesanan (3 Opsi: Pesan Lewat Meja / Reservasi / Bungkus) -->
+              <!-- 0. Indikator Nomor Meja Terkunci Otomatis dari QR Meja (?meja=...) -->
+              <div class="form-group locked-table-group" id="locked-table-group" style="display: none;">
+                <div class="locked-table-card">
+                  <span class="locked-table-icon" aria-hidden="true">📍</span>
+                  <div class="locked-table-info">
+                    <span class="locked-table-label">Nomor Meja Terdeteksi dari QR:</span>
+                    <strong id="locked-table-display" class="locked-table-name">Meja 1</strong>
+                  </div>
+                  <span class="locked-table-badge">🔒 Terkunci Otomatis</span>
+                </div>
+              </div>
+
+              <!-- 1. Pilihan Tipe Makan (Khusus Mode Scan QR Meja) -->
+              <div class="form-group dining-type-group" id="dining-type-container" style="display: none;">
+                <label class="order-type-title">Pilihan Tipe Makan <span class="required">*</span></label>
+                <div class="dining-type-selector" role="radiogroup" aria-label="Tipe Makan">
+                  <label class="dining-type-card active" id="card-dining-dinein" for="dining-type-dinein">
+                    <input type="radio" name="diningTypeRadio" id="dining-type-dinein" value="dine-in" checked>
+                    <span class="dining-type-icon">🍽️</span>
+                    <div class="dining-type-content">
+                      <strong class="dining-type-label">Makan di Tempat (Dine-In)</strong>
+                      <small class="dining-type-desc">Santap langsung di meja / saung ini</small>
+                    </div>
+                  </label>
+
+                  <label class="dining-type-card" id="card-dining-takeaway" for="dining-type-takeaway">
+                    <input type="radio" name="diningTypeRadio" id="dining-type-takeaway" value="take-away">
+                    <span class="dining-type-icon">🥡</span>
+                    <div class="dining-type-content">
+                      <strong class="dining-type-label">Bawa Pulang (Take-Away)</strong>
+                      <small class="dining-type-desc">Dibungkus rapat untuk dibawa pulang</small>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- 2. Pilihan Tipe Pemesanan (Khusus Mode WhatsApp Admin: Reservasi / Bungkus) -->
               <div class="form-group order-type-group" id="order-type-container">
                 <label class="order-type-title">Pilihan Tipe Pemesanan <span class="required">*</span></label>
                 <div class="order-type-selector" role="radiogroup" aria-label="Tipe Pemesanan">
@@ -568,7 +608,7 @@
     </section>
 
     <!-- 8. Bagian Kontak & Lokasi Restoran -->
-    <section id="kontak" class="section" aria-labelledby="contact-title">
+    <section id="kontak" class="section non-menu-section" aria-labelledby="contact-title">
       <div class="container">
         <header class="section-header">
           <span class="section-tag">Pelayanan & Lokasi</span>
@@ -641,10 +681,58 @@
       </div>
     </div>
 
+    <!-- Kotak Ajakan Ulasan Google Review di Footer -->
+    <div class="container footer-review-container">
+      <div class="google-review-box footer-google-review">
+        <p class="review-box-title">Penilaianmu sangat berarti bagi kami</p>
+        <!-- [https://share.google/gyzTJgMCoW4cFrUpn] Link Google Review Resmi Saung H. Amir -->
+        <a href="https://share.google/gyzTJgMCoW4cFrUpn" target="_blank" rel="noopener noreferrer" class="btn-google-review">
+          ⭐ Beri Ulasan di Google (SAHA Saung H. Amir)
+        </a>
+      </div>
+    </div>
+
     <div class="container footer-bottom">
       <p>&copy; 2026 <strong>Saung Haji Amir (SAHA)</strong>. Hak Cipta Dilindungi. Desain Semantik HTML5 & CSS Modern.</p>
     </div>
   </footer>
+
+  <!-- 0. MODAL AWAL: SUMBER AKSES PELANGGAN (QR MEJA vs WHATSAPP ADMIN) -->
+  <div id="access-source-modal" class="access-source-modal" role="dialog" aria-modal="true" aria-labelledby="access-modal-title" hidden>
+    <div class="access-source-backdrop" id="access-source-backdrop"></div>
+    <div class="access-source-box">
+      <div class="access-source-header">
+        <img src="assets/images/logokecil.jpeg" alt="Logo Saung Haji Amir" class="access-source-logo" width="60" height="60">
+        <span class="access-source-badge">SAHA • Saung Haji Amir</span>
+        <h2 id="access-modal-title" class="access-source-title">Kamu buka link ini darimana?</h2>
+        <p class="access-source-subtitle">Pilih jalur pemesananmu untuk kemudahan transaksi:</p>
+      </div>
+
+      <div class="access-source-options">
+        <button type="button" id="btn-source-qr" class="btn-source-card btn-source-qr">
+          <div class="btn-source-icon-wrap">
+            <span class="btn-source-icon" aria-hidden="true">📱</span>
+          </div>
+          <div class="btn-source-text">
+            <strong class="btn-source-title">Dari Scan QR Meja</strong>
+            <small class="btn-source-desc">Mode Cepat: Langsung lihat katalog menu & pesan ke kasir</small>
+          </div>
+          <span class="btn-source-arrow" aria-hidden="true">➔</span>
+        </button>
+
+        <button type="button" id="btn-source-wa" class="btn-source-card btn-source-wa">
+          <div class="btn-source-icon-wrap">
+            <span class="btn-source-icon" aria-hidden="true">💬</span>
+          </div>
+          <div class="btn-source-text">
+            <strong class="btn-source-title">Dari WhatsApp Admin</strong>
+            <small class="btn-source-desc">Mode Lengkap: Reservasi saung, pesan bungkus & info resto</small>
+          </div>
+          <span class="btn-source-arrow" aria-hidden="true">➔</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal / Bottom Sheet Detail Menu (Gaya GoFood untuk Layar HP & Laptop) -->
   <div id="product-modal" class="product-modal" role="dialog" aria-modal="true" aria-labelledby="modal-product-title" hidden>
@@ -686,20 +774,28 @@
     </div>
   </div>
 
-  <!-- Modal Dialog Sukses Kirim Pesanan ke Dapur Firestore -->
+  <!-- Modal Dialog Sukses Kirim Pesanan ke Kasir & Dapur Firestore -->
   <div id="order-success-modal" class="order-success-modal" role="dialog" aria-modal="true" aria-labelledby="success-modal-title" hidden>
     <div class="order-success-backdrop" id="success-modal-backdrop"></div>
     <div class="order-success-box">
-      <div class="order-success-icon" aria-hidden="true">🎉</div>
-      <h3 id="success-modal-title" class="order-success-title">Pesanan Berhasil Dikirim ke Dapur!</h3>
-      <p class="order-success-desc">
-        Pesanan Anda telah diterima oleh sistem kasir & dapur Saung H. Amir dan sedang dipersiapkan oleh koki kami.
-      </p>
+      <div class="order-success-icon" aria-hidden="true">👨‍🍳✨</div>
+      <h3 id="success-modal-title" class="order-success-title">Pesanan Berhasil Dikirim ke Kasir & Dapur!</h3>
+      
+      <!-- Pesan Ramah Utama Sesuai Spesifikasi Instruksi User -->
+      <div class="order-success-friendly-banner">
+        <p class="order-success-friendly-msg">
+          Mohon ditunggu pesanan nya ya kakak, kami akan segera memasak pesananmu
+        </p>
+      </div>
 
       <div class="order-success-card">
         <div class="order-success-row">
-          <span class="order-success-label">Nomor Meja / Layanan:</span>
+          <span class="order-success-label">Nomor Meja / Area:</span>
           <strong id="success-table-number" class="order-success-value">-</strong>
+        </div>
+        <div class="order-success-row" id="success-type-row">
+          <span class="order-success-label">Tipe Pemesanan:</span>
+          <strong id="success-order-type" class="order-success-value">PESAN LEWAT QR MEJA</strong>
         </div>
         <div class="order-success-row" id="success-addon-row" style="display: none;">
           <span class="order-success-label">Jenis Pesanan:</span>
@@ -718,7 +814,7 @@
           <span class="badge-payment-status">belum_lunas</span>
         </div>
         <div class="order-success-row">
-          <span class="order-success-label">Total Pesanan:</span>
+          <span class="order-success-label">Total Pembayaran:</span>
           <strong id="success-total-price" class="order-success-total">Rp 0</strong>
         </div>
         <div class="order-success-row">
@@ -727,9 +823,18 @@
         </div>
       </div>
 
+      <!-- Kotak Ajakan Ulasan Google Review Sesuai Instruksi User -->
+      <div class="google-review-box">
+        <p class="review-box-title">Penilaianmu sangat berarti bagi kami</p>
+        <!-- [https://share.google/gyzTJgMCoW4cFrUpn] Link Google Review Resmi Saung H. Amir -->
+        <a href="https://share.google/gyzTJgMCoW4cFrUpn" target="_blank" rel="noopener noreferrer" class="btn-google-review">
+          ⭐ Beri Ulasan di Google (SAHA Saung H. Amir)
+        </a>
+      </div>
+
       <div class="order-success-actions">
         <button type="button" id="close-success-modal-btn" class="btn btn-primary btn-block btn-lg">
-          OK, Tutup & Buat Pesanan Baru
+          OK, Tutup & Pesan Menu Lain
         </button>
       </div>
     </div>
